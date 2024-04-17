@@ -202,7 +202,7 @@ public final class Debugger {
 		Common.log(header + "! Please check your error.log and report this issue with the information in that file.");
 
 		// Finally, save the error file
-		FileUtil.write(FoConstants.File.ERRORS, lines);
+		FileUtil.write(FoConstants.File.ERROR, lines);
 	}
 
 	private static void fill(List<String> list, String... messages) {

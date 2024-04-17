@@ -189,7 +189,7 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 		this.permission = permission;
 		this.aliases = aliases;
 
-		// Bungee does not handle no permission message properly > no variables replaced etc.,
+		// Velocity does not handle no permission message properly > no variables replaced etc.,
 		// so we make it think there's no required permission and handle on our end
 		this.setPermission(permission);
 	}

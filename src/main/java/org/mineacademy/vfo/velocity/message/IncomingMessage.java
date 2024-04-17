@@ -1,4 +1,4 @@
-package org.mineacademy.vfo.bungee.message;
+package org.mineacademy.vfo.velocity.message;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -6,10 +6,10 @@ import java.util.UUID;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.ReflectionUtil;
-import org.mineacademy.vfo.bungee.BungeeListener;
-import org.mineacademy.vfo.bungee.BungeeMessageType;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.debug.Debugger;
+import org.mineacademy.vfo.velocity.BungeeListener;
+import org.mineacademy.vfo.velocity.BungeeMessageType;
 
 import com.google.common.io.ByteArrayDataInput;
 import com.velocitypowered.api.proxy.messages.LegacyChannelIdentifier;

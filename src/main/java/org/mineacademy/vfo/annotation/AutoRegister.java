@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * Supported classes:
  * - SimpleListener
  * - PacketListener
- * - BungeeListener
+ * - VelocityListener
  * - DiscordListener
  * - SimpleCommand
  * - SimpleCommandGroup

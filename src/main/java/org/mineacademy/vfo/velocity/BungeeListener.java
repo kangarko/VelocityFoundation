@@ -1,4 +1,4 @@
-package org.mineacademy.vfo.bungee;
+package org.mineacademy.vfo.velocity;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashSet;
@@ -7,9 +7,9 @@ import java.util.UUID;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
-import org.mineacademy.vfo.bungee.message.IncomingMessage;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.mineacademy.vfo.velocity.message.IncomingMessage;
 
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteStreams;

@@ -1,4 +1,4 @@
-package org.mineacademy.vfo.bungee.message;
+package org.mineacademy.vfo.velocity.message;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,12 +8,12 @@ import javax.annotation.Nullable;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
-import org.mineacademy.vfo.bungee.BungeeListener;
-import org.mineacademy.vfo.bungee.BungeeMessageType;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.mineacademy.vfo.velocity.BungeeListener;
+import org.mineacademy.vfo.velocity.BungeeMessageType;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;

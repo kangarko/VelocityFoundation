@@ -16,7 +16,6 @@ import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.ReflectionUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.annotation.AutoRegister;
-import org.mineacademy.vfo.bungee.BungeeListener;
 import org.mineacademy.vfo.command.SimpleCommand;
 import org.mineacademy.vfo.command.SimpleCommandGroup;
 import org.mineacademy.vfo.debug.Debugger;
@@ -29,6 +28,7 @@ import org.mineacademy.vfo.settings.SimpleLocalization;
 import org.mineacademy.vfo.settings.SimpleSettings;
 import org.mineacademy.vfo.settings.YamlConfig;
 import org.mineacademy.vfo.settings.YamlStaticConfig;
+import org.mineacademy.vfo.velocity.BungeeListener;
 
 import com.velocitypowered.api.event.Subscribe;
 

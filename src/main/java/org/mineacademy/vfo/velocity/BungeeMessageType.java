@@ -1,4 +1,4 @@
-package org.mineacademy.vfo.bungee;
+package org.mineacademy.vfo.velocity;
 
 /**
  * Represents an action sent over BungeeCord containing

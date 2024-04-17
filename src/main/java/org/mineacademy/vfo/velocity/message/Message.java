@@ -1,8 +1,8 @@
-package org.mineacademy.vfo.bungee.message;
+package org.mineacademy.vfo.velocity.message;
 
 import org.mineacademy.vfo.Valid;
-import org.mineacademy.vfo.bungee.BungeeListener;
-import org.mineacademy.vfo.bungee.BungeeMessageType;
+import org.mineacademy.vfo.velocity.BungeeListener;
+import org.mineacademy.vfo.velocity.BungeeMessageType;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

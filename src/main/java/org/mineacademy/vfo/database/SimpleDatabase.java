@@ -22,6 +22,7 @@ import org.mineacademy.vfo.TimeUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.collection.StrictMap;
+import org.mineacademy.vfo.constants.FoConstants;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.remain.Remain;
@@ -449,7 +450,7 @@ public class SimpleDatabase {
 			for (final String statement : sqls)
 				errorLog.add(this.replaceVariables(statement));
 
-			FileUtil.write("sql-error.log", errorLog);
+			FileUtil.write(FoConstants.File.SQL_ERROR, errorLog);
 
 			t.printStackTrace();
 
