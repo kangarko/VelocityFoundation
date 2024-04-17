@@ -9,28 +9,23 @@
 
 VelocityFoundation is a library for fast development of Velocity plugins.
 
-### Important Licencing Information
+# Licencing Information
 
 © MineAcademy.org
 
-If you are a paying student of MineAcademy.org then you are granted full
-unlimited licence to use, modify and reproduce Foundation both commercially
-and non-commercially, for yourself, your team or network. You can also
-modify the library however you like and include it in your plugins you publish
-or sell without stating that you are using this library.
+Tl;dl: You can do whatever you want as long as you don't claim this library as your own or don't sell or resell parts of it. If you are not a paying student of MineAcademy, you MUST place a link to this GitHub page in your sales pages (for example on Overview pages on Spigot) if your paid software is using Foundation.
 
-If you are not a paying student of MineAcademy.org then you may
-use this library for non-commercial purposes only. You are allowed
-to make changes to this library however as long as those are only
-minor changes you must clearly attribute that you are using Foundation
-in your software.
+1) **If you are a paying student of MineAcademy.org** then you can use, modify and
+reproduce this library both commercially and non-commercially for yourself, your team
+or network without attribution.
 
-For both parties, do not sell or claim any part of this library as your own.
-All infringements will be prosecuted.
+4) **If you are not a paying student of MineAcademy.org** then you may
+use this library as stated above however you must clearly attribute that you
+are using this library in your software by linking to this GitHub page.
+
+In both of the above cases, do not sell or claim any part of this library as your own.
 
 No guarantee - this software is provided AS IS, without any guarantee on its
-functionality. We made our best efforts to make Foundation an enterprise-level
-solution for anyone looking to accelerate their coding however we are not
+functionality. We made our best efforts to make VelocityFoundation an enterprise-level
+solution for anyone looking to accelerate his coding however we are not
 taking any responsibility for the success or failure you achieve using it.
-
-**A tutorial on how to use this library is a part of our Project Orion training available now at https://mineacademy.org**
