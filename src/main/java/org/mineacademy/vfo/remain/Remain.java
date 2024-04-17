@@ -17,6 +17,7 @@ import org.mineacademy.vfo.plugin.SimplePlugin;
 
 import com.google.gson.Gson;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
@@ -83,6 +84,15 @@ public final class Remain {
 	 */
 	public static Collection<Player> getOnlinePlayers() {
 		return SimplePlugin.getServer().getAllPlayers();
+	}
+
+	/**
+	 * Returns all servers
+	 *
+	 * @return
+	 */
+	public static Collection<RegisteredServer> getServers() {
+		return SimplePlugin.getServer().getAllServers();
 	}
 
 	/**
