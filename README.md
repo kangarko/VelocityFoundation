@@ -9,13 +9,94 @@
 
 VelocityFoundation is a library for fast development of Velocity plugins.
 
-**Why use VelocityFoundation?**
+## Why use VelocityFoundation?
 
 * Syntax and classes similar to Bukkit/BungeeCord to help you transition over to Velocity.
 * Focus on simplicity to avoid over-the-top abstractions and complicated names.
-* Automatic registering of commands, events and plugin messages to save you time.
+* A simpler command system.
+* A ton of time-saving methods useful for people tired of dealing with abstract/complicated APIs (i.e. Common#tell(Player, String for simple player messaging without the need to use Adventure each time)
 
-# Licencing Information
+## Usage
+
+1. Include [VelocityFoundation]([url](https://jitpack.io/#kangarko/VelocityFoundation)) to your Maven/Gradle dependency.
+2. Include [velocity-api]([url](https://docs.papermc.io/velocity/dev/creating-your-first-plugin#setting-up-the-dependency)) and [lombok]([url](https://mvnrepository.com/artifact/org.projectlombok/lombok)) to your dependencies.
+3. Relocate VelocityControl and its library nashorn. Here is a snippet for Maven to place inside <plugins> section. You need to change the shadedPattern to match your own package name.
+
+```xml
+<plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-shade-plugin</artifactId>
+  <version>3.5.1</version>
+  <executions>
+    <execution>
+      <phase>package</phase>
+      <goals>
+        <goal>shade</goal>
+      </goals>
+    </execution>
+  </executions>
+  <configuration>
+    <createDependencyReducedPom>false</createDependencyReducedPom>
+    <relocations>
+      <relocation>
+        <pattern>org.mineacademy.vfo</pattern>
+        <shadedPattern>org.mineacademy.velocitycontrol.lib</shadedPattern>
+      </relocation>
+      <relocation>
+        <pattern>org.objectweb.asm</pattern>
+        <shadedPattern>org.mineacademy.velocitycontrol.nashorn.asm</shadedPattern>
+      </relocation>
+    </relocations>
+  </configuration>
+</plugin>
+```
+
+4. Make your main plugin class override SimplePlugin and implement the necessary constructor. See the example below for an empty main plugin's class (make sure to change @Plugin info to match your own info).
+
+```java
+package org.mineacademy.chatsync;
+
+import java.nio.file.Path;
+
+import org.mineacademy.velocitycontrol.listener.ChatListener;
+import org.mineacademy.vfo.command.ReloadCommand;
+import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.slf4j.Logger;
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.ProxyServer;
+
+@Plugin(id = "chatsync", name = "ChatSync", version = "1.0.0", authors = { "kangarko" })
+public final class ChatSyncPlugin extends SimplePlugin {
+
+	@Inject
+	public ChatSyncPlugin(final ProxyServer proxyServer, Logger logger, final @DataDirectory Path dataDirectory) {
+		super(proxyServer, logger, dataDirectory);
+	}
+
+	// This method is called on server start
+	@Override
+	protected void onPluginStart() {
+	}
+
+	// This method is called on server stop
+	@Override
+	protected void onPluginStop() {
+	}
+
+	// This method is called on /chatreload and on the plugin startup, place your event, command and runnable registration here
+	@Override
+	protected void onReloadablesStart() {
+		//this.registerEvents(new ChatListener());
+		//this.registerCommand(new ReloadCommand("chatreload", "chatcontrol.command.reload"));
+	}
+}
+
+```
+
+## Licencing Information
 
 © MineAcademy.org
 
