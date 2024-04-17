@@ -12,6 +12,7 @@ package org.mineacademy.vfo.plugin;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Objects;
@@ -68,18 +69,6 @@ public abstract class SimplePlugin {
 	private static SimplePlugin instance;
 
 	/**
-	 * Shortcut for getDescription().getVersion()
-	 */
-	@Getter
-	private static String version;
-
-	/**
-	 * Shortcut for getName()
-	 */
-	@Getter
-	private static String named;
-
-	/**
 	 * An internal flag to indicate that the plugin is being reloaded.
 	 */
 	@Getter
@@ -107,6 +96,7 @@ public abstract class SimplePlugin {
 	}
 
 	/**
+	 * Get this plugin's jar file
 	 *
 	 * @return
 	 */
@@ -114,6 +104,29 @@ public abstract class SimplePlugin {
 		return getInstance().file;
 	}
 
+	/**
+	 * Get this plugin's name
+	 *
+	 * @return
+	 */
+	public static String getNamed() {
+		return getInstance().name;
+	}
+
+	/**
+	 * Get this plugin's version
+	 *
+	 * @return
+	 */
+	public static String getVersion() {
+		return getInstance().version;
+	}
+
+	/**
+	 * Shortcut to retrieve this plugin's data folder
+	 *
+	 * @return
+	 */
 	public static File getData() {
 		return getInstance().dataFolder;
 	}
@@ -142,11 +155,6 @@ public abstract class SimplePlugin {
 	// ----------------------------------------------------------------------------------------
 
 	/**
-	 * A list of currently enabled event listeners
-	 */
-	private final StrictList<Listener> listeners = new StrictList<>();
-
-	/**
 	 * The proxy server
 	 */
 	private final ProxyServer proxy;
@@ -157,19 +165,29 @@ public abstract class SimplePlugin {
 	private final Logger logger;
 
 	/**
-	 * Shortcut for getFile()
-	 */
-	private File file;
-
-	/**
 	 * The path data
 	 */
 	private final File dataFolder;
 
 	/**
-	 * The plugin id
+	 * Shortcut for getFile()
 	 */
-	private final String id;
+	private final File file;
+
+	/**
+	 * The plugin version
+	 */
+	private final String version;
+
+	/**
+	 * The plugin name
+	 */
+	private final String name;
+
+	/**
+	 * A list of currently enabled event listeners
+	 */
+	private final StrictList<Listener> listeners = new StrictList<>();
 
 	/**
 	 * A temporary bungee listener, see {@link #setBungeeCord(BungeeListener)}
@@ -202,38 +220,38 @@ public abstract class SimplePlugin {
 		instance = this;
 
 		// Hacky due to lacking Velocity implementation
-		final Plugin pluginAnnotation = this.getClass().getDeclaredAnnotation(Plugin.class);
+		final Plugin annotation = this.getClass().getDeclaredAnnotation(Plugin.class);
 
-		version = pluginAnnotation.version();
-		named = pluginAnnotation.name();
+		this.version = annotation.version();
+		this.name = annotation.name();
+
+		try {
+			this.file = new File(getClass().getProtectionDomain().getCodeSource().getLocation().toURI());
+
+		} catch (final URISyntaxException ex) {
+			throw new RuntimeException(ex);
+		}
 
 		this.proxy = proxy;
 		this.logger = logger;
-		this.id = pluginAnnotation.id();
-		this.dataFolder = new File(dataDirectory.toFile().getParentFile(), named); // Another hack to prevent lowercase folders
+		this.dataFolder = new File(dataDirectory.toFile().getParentFile(), this.name); // Another hack to prevent lowercase folders
 
-		// Init Nashorn
+		// Init Nashorn library, must be shaded in the plugin's jar
 		final javax.script.ScriptEngineManager engineManager = new javax.script.ScriptEngineManager();
 		final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
-
 		engineManager.registerEngineName("Nashorn", engineFactory);
 
-		// Call parent
-		this.onPluginInit();
+		// Call delegate
+		this.onPluginLoad();
 	}
 
 	@Subscribe
 	public void onProxyInitialization(ProxyInitializeEvent event) {
-		this.file = proxy.getPluginManager().getPlugin(this.id).get().getDescription().getSource().get().toFile();
-
-		// Before all, check if necessary libraries and the minimum required MC version
 		if (!this.enabled)
 			return;
 
-		// Load debug mode early
 		Debugger.detectDebugMode();
 
-		// Print startup logo early before onPluginPreStart
 		// Disable logging prefix if logo is set
 		if (this.getStartupLogo() != null) {
 			final String oldLogPrefix = Common.getLogPrefix();
@@ -243,12 +261,7 @@ public abstract class SimplePlugin {
 			Common.setLogPrefix(oldLogPrefix);
 		}
 
-		// Return if plugin pre start indicated a fatal problem
-		if (!this.enabled)
-			return;
-
 		try {
-
 			// --------------------------------------------
 			// Call the main start method
 			// --------------------------------------------
@@ -271,19 +284,15 @@ public abstract class SimplePlugin {
 
 			this.onReloadablesStart();
 			this.onPluginStart();
+
 			// --------------------------------------------
 
-			// Return if plugin start indicated a fatal problem
 			if (!this.enabled)
 				return;
-
-			// Register our listeners
-			//this.registerEvents(this); - automatically registered
 
 			// Prepare Nashorn engine
 			JavaScriptExecutor.run("");
 
-			// Finish off by starting metrics (currently bStats)
 			if (this.getMetricsPluginId() != -1)
 				new Metrics.Factory(this.proxy, this.logger, this.dataFolder.toPath()).make(this, getMetricsPluginId());
 
@@ -302,6 +311,7 @@ public abstract class SimplePlugin {
 	public void onProxyInitialization(ProxyShutdownEvent event) {
 		try {
 			this.onPluginStop();
+
 		} catch (final Throwable t) {
 			Common.log("&cPlugin might not shut down property. Got " + t.getClass().getSimpleName() + ": " + t.getMessage());
 		}
@@ -354,7 +364,7 @@ public abstract class SimplePlugin {
 	/**
 	 * Called before the plugin is started, see {@link JavaPlugin#onLoad()}
 	 */
-	protected void onPluginInit() {
+	protected void onPluginLoad() {
 	}
 
 	/**
@@ -474,7 +484,6 @@ public abstract class SimplePlugin {
 	 * @param extendingClass
 	 */
 	protected final <T extends Listener> void registerAllEvents(final Class<T> extendingClass) {
-
 		Valid.checkBoolean(!extendingClass.equals(Listener.class), "registerAllEvents does not support Listener.class due to conflicts, create your own middle class instead");
 
 		classLookup:
@@ -606,6 +615,23 @@ public abstract class SimplePlugin {
 	}
 
 	/**
+	 * Return the data folder
+	 *
+	 * @return
+	 */
+	public final File getDataFolder() {
+		return this.dataFolder;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final File getFile() {
+		return this.file;
+	}
+
+	/**
 	 * The start-up fancy logo
 	 *
 	 * @return null by default
@@ -651,14 +677,17 @@ public abstract class SimplePlugin {
 	}
 
 	/**
-	 * Foundation automatically can filter console commands for you, including
+	 * VelocityFoundation automatically can filter console commands for you, including
 	 * messages from other plugins or the server itself, preventing unnecessary console spam.
 	 *
 	 * You can return a list of messages that will be matched using "startsWith OR contains" method
 	 * and will be filtered.
 	 *
+	 * @deprecated limited to System.out
+	 *
 	 * @return
 	 */
+	@Deprecated
 	public Set<String> getConsoleFilter() {
 		return new HashSet<>();
 	}
@@ -745,22 +774,5 @@ public abstract class SimplePlugin {
 	@Deprecated
 	public final void setBungeeCord(BungeeListener bungeeListener) {
 		this.bungeeListener = bungeeListener;
-	}
-
-	/**
-	 * Return the data folder
-	 *
-	 * @return
-	 */
-	public final File getDataFolder() {
-		return this.dataFolder;
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public final File getFile() {
-		return this.file;
 	}
 }
