@@ -9,6 +9,12 @@
 
 VelocityFoundation is a library for fast development of Velocity plugins.
 
+**Why use VelocityFoundation?**
+
+* Syntax and classes similar to Bukkit/BungeeCord to help you transition over to Velocity.
+* Focus on simplicity to avoid over-the-top abstractions and complicated names.
+* Automatic registering of commands, events and plugin messages to save you time.
+
 # Licencing Information
 
 © MineAcademy.org
