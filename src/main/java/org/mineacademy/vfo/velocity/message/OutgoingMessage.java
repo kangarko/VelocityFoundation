@@ -17,7 +17,6 @@ import org.mineacademy.vfo.velocity.BungeeMessageType;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import com.velocitypowered.api.proxy.messages.LegacyChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 /**
@@ -238,7 +237,7 @@ public final class OutgoingMessage extends Message {
 			return;
 		}
 
-		info.sendPluginMessage(new LegacyChannelIdentifier(this.getChannel()), data);
+		info.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
 		Debugger.debug("bungee", "Forwarding data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server.");
 	}
 
@@ -279,7 +278,7 @@ public final class OutgoingMessage extends Message {
 				continue;
 			}
 
-			otherServer.sendPluginMessage(new LegacyChannelIdentifier(this.getChannel()), data);
+			otherServer.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
 			Debugger.debug("bungee", "Sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server.");
 		}
 	}

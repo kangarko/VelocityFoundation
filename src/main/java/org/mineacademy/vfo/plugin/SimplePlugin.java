@@ -10,6 +10,7 @@
  */
 package org.mineacademy.vfo.plugin;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.net.URISyntaxException;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.Nullable;
 
@@ -39,16 +41,26 @@ import org.mineacademy.vfo.settings.Lang;
 import org.mineacademy.vfo.settings.SimpleLocalization;
 import org.mineacademy.vfo.settings.SimpleSettings;
 import org.mineacademy.vfo.velocity.BungeeListener;
+import org.mineacademy.vfo.velocity.BungeeMessageType;
+import org.mineacademy.vfo.velocity.message.IncomingMessage;
 import org.slf4j.Logger;
 
+import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteStreams;
 import com.velocitypowered.api.command.Command;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.connection.PluginMessageEvent.ForwardResult;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.proxy.ServerConnection;
+import com.velocitypowered.api.proxy.messages.ChannelMessageSink;
+import com.velocitypowered.api.proxy.messages.ChannelMessageSource;
 import com.velocitypowered.api.proxy.messages.LegacyChannelIdentifier;
+import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 
 import lombok.Getter;
@@ -62,6 +74,9 @@ public abstract class SimplePlugin {
 	// ----------------------------------------------------------------------------------------
 	// Static
 	// ----------------------------------------------------------------------------------------
+
+	private static final LegacyChannelIdentifier LEGACY_BUNGEE_CHANNEL = new LegacyChannelIdentifier("BungeeCord");
+	private static final MinecraftChannelIdentifier MODERN_BUNGEE_CHANNEL = MinecraftChannelIdentifier.create("bungeecord", "main");
 
 	/**
 	 * The instance of this plugin
@@ -237,9 +252,14 @@ public abstract class SimplePlugin {
 		this.dataFolder = new File(dataDirectory.toFile().getParentFile(), this.name); // Another hack to prevent lowercase folders
 
 		// Init Nashorn library, must be shaded in the plugin's jar
-		final javax.script.ScriptEngineManager engineManager = new javax.script.ScriptEngineManager();
-		final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
-		engineManager.registerEngineName("Nashorn", engineFactory);
+		try {
+			final javax.script.ScriptEngineManager engineManager = new javax.script.ScriptEngineManager();
+			final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
+			engineManager.registerEngineName("Nashorn", engineFactory);
+
+		} catch (NoClassDefFoundError ex) {
+			// Assume running on ant
+		}
 
 		// Call delegate
 		this.onPluginLoad();
@@ -266,8 +286,7 @@ public abstract class SimplePlugin {
 			// Call the main start method
 			// --------------------------------------------
 
-			Common.registerEvents(new BungeeListener.BungeeListenerImpl());
-			this.proxy.getChannelRegistrar().register(new LegacyChannelIdentifier("BungeeCord"));
+			this.registerInitBungee();
 
 			// Hide plugin name before console messages
 			final String oldLogPrefix = Common.getLogPrefix();
@@ -320,6 +339,70 @@ public abstract class SimplePlugin {
 
 		Objects.requireNonNull(instance, "Instance of " + this.getDataFolder().getName() + " already nulled!");
 		instance = null;
+	}
+
+	/**
+	 * Handle the received message automatically if it matches our tag
+	 *
+	 * @param event
+	 */
+	@Subscribe
+	public void onPluginMessage(PluginMessageEvent event) {
+		synchronized (instance) {
+			final ChannelMessageSource sender = event.getSource();
+			final ChannelMessageSink receiver = event.getTarget();
+			final byte[] data = event.getData();
+
+			if (event.getResult() == ForwardResult.handled())
+				return;
+
+			// Check if the message is for a server (ignore client messages)
+			if (!event.getIdentifier().getId().equals("BungeeCord") && !event.getIdentifier().getId().equals("bungeecord:main"))
+				return;
+
+			// Check if a player is not trying to send us a fake message
+			if (!(sender instanceof ServerConnection))
+				return;
+
+			// Read the plugin message
+			final ByteArrayInputStream stream = new ByteArrayInputStream(data);
+			ByteArrayDataInput input;
+
+			try {
+				input = ByteStreams.newDataInput(stream);
+
+			} catch (final Throwable t) {
+				input = ByteStreams.newDataInput(data);
+			}
+
+			final String channelName = input.readUTF();
+
+			boolean handled = false;
+
+			for (final BungeeListener listener : BungeeListener.getRegisteredListeners())
+				if (channelName.equals(listener.getChannel())) {
+
+					final UUID senderUid = UUID.fromString(input.readUTF());
+					final String serverName = input.readUTF();
+					final String actionName = input.readUTF();
+
+					final BungeeMessageType action = BungeeMessageType.getByName(listener, actionName);
+					Valid.checkNotNull(action, "Unknown plugin action '" + actionName + "'. IF YOU UPDATED THE PLUGIN BY RELOADING, stop your entire network, ensure all servers were updated and start it again.");
+
+					final IncomingMessage message = new IncomingMessage(listener, senderUid, serverName, action, data, input, stream);
+
+					listener.setSender((ServerConnection) sender);
+					listener.setReceiver(receiver);
+					listener.setData(data);
+
+					Debugger.debug("bungee-all", "Channel " + channelName + " received " + message.getAction() + " message from " + message.getServerName() + " server.");
+					listener.onMessageReceived(listener.getSender(), message);
+					handled = true;
+				}
+
+			if (handled)
+				event.setResult(PluginMessageEvent.ForwardResult.handled());
+		}
 	}
 
 	/**
@@ -437,7 +520,7 @@ public abstract class SimplePlugin {
 			if (!this.enabled)
 				return;
 
-			this.proxy.getChannelRegistrar().register(new LegacyChannelIdentifier("BungeeCord"));
+			this.registerInitBungee();
 
 			// Register classes
 			AutoRegisterScanner.scanAndRegister();
@@ -513,8 +596,15 @@ public abstract class SimplePlugin {
 	 * @param listener
 	 */
 	protected final void registerBungeeCord(final BungeeListener listener) {
-		this.proxy.getChannelRegistrar().register(new LegacyChannelIdentifier(listener.getChannel()));
+		//this.proxy.getChannelRegistrar().register(new LegacyChannelIdentifier(listener.getChannel()));
 		this.proxy.getEventManager().register(this, listener);
+	}
+
+	/*
+	 * Register the main bungeecord listener alwas
+	 */
+	private void registerInitBungee() {
+		this.proxy.getChannelRegistrar().register(LEGACY_BUNGEE_CHANNEL, MODERN_BUNGEE_CHANNEL);
 	}
 
 	/**
