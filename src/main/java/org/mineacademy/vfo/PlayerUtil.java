@@ -1,6 +1,7 @@
 package org.mineacademy.vfo;
 
 import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.mineacademy.vfo.remain.Remain;
 
 import com.velocitypowered.api.permission.PermissionSubject;
 import com.velocitypowered.api.proxy.Player;
@@ -8,7 +9,6 @@ import com.velocitypowered.api.proxy.Player;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.text.Component;
 
 /**
  * Utility class for managing players.
@@ -24,11 +24,11 @@ public final class PlayerUtil {
 	 * Kicks the player on the main thread with a colorized message
 	 *
 	 * @param player
-	 * @param message
+	 * @param messages
 	 *
 	 */
-	public static void kick(final Player player, final String... message) {
-		player.disconnect(Component.text(Common.colorize(message)));
+	public static void kick(final Player player, final String... messages) {
+		player.disconnect(Remain.toComponentLegacy(String.join("\n", messages)));
 	}
 
 	// ------------------------------------------------------------------------------------------------------------
