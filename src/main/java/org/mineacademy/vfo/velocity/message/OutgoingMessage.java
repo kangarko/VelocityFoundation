@@ -222,23 +222,24 @@ public final class OutgoingMessage extends Message {
 	 * @param info
 	 */
 	public void sendToServer(String fromServer, RegisteredServer info) {
+		synchronized (BungeeListener.DEFAULT_CHANNEL) {
+			if (info.getPlayersConnected().isEmpty()) {
+				Debugger.debug("bungee", "NOT sending data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server because it is empty.");
 
-		if (info.getPlayersConnected().isEmpty()) {
-			Debugger.debug("bungee", "NOT sending data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server because it is empty.");
+				return;
+			}
 
-			return;
+			final byte[] data = this.getData(fromServer);
+
+			if (data.length > 32_000) { // Safety margin
+				Common.log("[outgoing-sendToServer] Outgoing bungee message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes.");
+
+				return;
+			}
+
+			info.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
+			Debugger.debug("bungee", "Forwarding data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server.");
 		}
-
-		final byte[] data = this.getData(fromServer);
-
-		if (data.length > 32_000) { // Safety margin
-			Common.log("[outgoing-sendToServer] Outgoing bungee message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes.");
-
-			return;
-		}
-
-		info.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
-		Debugger.debug("bungee", "Forwarding data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server.");
 	}
 
 	/**
@@ -255,31 +256,33 @@ public final class OutgoingMessage extends Message {
 	 * @param ignoredServerName
 	 */
 	public void broadcastExcept(@Nullable String ignoredServerName) {
-		final String channel = this.getChannel();
-		final byte[] data = this.getData("");
+		synchronized (BungeeListener.DEFAULT_CHANNEL) {
+			final String channel = this.getChannel();
+			final byte[] data = this.getData("");
 
-		if (data.length > 32_000) { // Safety margin
-			Common.log("[outgoing-broadcastExcept] Outgoing message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes. Channel: " + this.getListener().getChannel()
-					+ ", action: " + this.getAction().name() + ", queue: " + queue);
+			if (data.length > 32_000) { // Safety margin
+				Common.log("[outgoing-broadcastExcept] Outgoing message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes. Channel: " + this.getListener().getChannel()
+						+ ", action: " + this.getAction().name() + ", queue: " + queue);
 
-			return;
-		}
-
-		for (final RegisteredServer otherServer : SimplePlugin.getServer().getAllServers()) {
-			if (otherServer.getPlayersConnected().isEmpty()) {
-				Debugger.debug("bungee", "NOT sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server because it is empty.");
-
-				continue;
+				return;
 			}
 
-			if (ignoredServerName != null && otherServer.getServerInfo().getName().equalsIgnoreCase(ignoredServerName)) {
-				Debugger.debug("bungee", "NOT sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server because it is ignored.");
+			for (final RegisteredServer otherServer : SimplePlugin.getServer().getAllServers()) {
+				if (otherServer.getPlayersConnected().isEmpty()) {
+					Debugger.debug("bungee", "NOT sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server because it is empty.");
 
-				continue;
+					continue;
+				}
+
+				if (ignoredServerName != null && otherServer.getServerInfo().getName().equalsIgnoreCase(ignoredServerName)) {
+					Debugger.debug("bungee", "NOT sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server because it is ignored.");
+
+					continue;
+				}
+
+				otherServer.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
+				Debugger.debug("bungee", "Sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server.");
 			}
-
-			otherServer.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, data);
-			Debugger.debug("bungee", "Sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server.");
 		}
 	}
 

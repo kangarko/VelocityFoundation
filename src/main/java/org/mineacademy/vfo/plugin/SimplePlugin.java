@@ -264,7 +264,7 @@ public abstract class SimplePlugin {
 			final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
 			engineManager.registerEngineName("Nashorn", engineFactory);
 
-		} catch (NoClassDefFoundError ex) {
+		} catch (final NoClassDefFoundError ex) {
 			// Assume running on ant
 		}
 
@@ -355,7 +355,7 @@ public abstract class SimplePlugin {
 	 */
 	@Subscribe
 	public void onPluginMessage(PluginMessageEvent event) {
-		synchronized (instance) {
+		synchronized (BungeeListener.DEFAULT_CHANNEL) {
 			final ChannelMessageSource sender = event.getSource();
 			final ChannelMessageSink receiver = event.getTarget();
 			final byte[] data = event.getData();
@@ -411,23 +411,23 @@ public abstract class SimplePlugin {
 						.ifPresent(player -> player.sendPluginMessage(event.getIdentifier(), prepareForwardMessage(in)));
 
 			} else if (subChannel.equals("Forward")) {
-				String target = in.readUTF();
-				byte[] toForward = prepareForwardMessage(in);
+				final String target = in.readUTF();
+				final byte[] toForward = prepareForwardMessage(in);
 
 				if (target.equals("ALL")) {
-					for (RegisteredServer rs : this.proxy.getAllServers())
+					for (final RegisteredServer rs : this.proxy.getAllServers())
 						rs.sendPluginMessage(event.getIdentifier(), toForward);
 
 				} else
 					this.proxy.getServer(target).ifPresent(conn -> conn.sendPluginMessage(event.getIdentifier(), toForward));
 
 			} else if (subChannel.equals("Connect")) {
-				Optional<RegisteredServer> info = this.proxy.getServer(in.readUTF());
+				final Optional<RegisteredServer> info = this.proxy.getServer(in.readUTF());
 				info.ifPresent(serverInfo -> connection.getPlayer().createConnectionRequest(serverInfo).fireAndForget());
 
 			} else if (subChannel.equals("ConnectOther"))
 				this.proxy.getPlayer(in.readUTF()).ifPresent(player -> {
-					Optional<RegisteredServer> info = this.proxy.getServer(in.readUTF());
+					final Optional<RegisteredServer> info = this.proxy.getServer(in.readUTF());
 					info.ifPresent(serverInfo -> connection.getPlayer().createConnectionRequest(serverInfo).fireAndForget());
 				});
 
@@ -437,7 +437,7 @@ public abstract class SimplePlugin {
 				out.writeInt(connection.getPlayer().getRemoteAddress().getPort());
 
 			} else if (subChannel.equals("PlayerCount")) {
-				String target = in.readUTF();
+				final String target = in.readUTF();
 
 				if (target.equals("ALL")) {
 					out.writeUTF("PlayerCount");
@@ -445,14 +445,14 @@ public abstract class SimplePlugin {
 					out.writeInt(this.proxy.getPlayerCount());
 				} else
 					this.proxy.getServer(target).ifPresent(rs -> {
-						int playersOnServer = rs.getPlayersConnected().size();
+						final int playersOnServer = rs.getPlayersConnected().size();
 						out.writeUTF("PlayerCount");
 						out.writeUTF(rs.getServerInfo().getName());
 						out.writeInt(playersOnServer);
 					});
 
 			} else if (subChannel.equals("PlayerList")) {
-				String target = in.readUTF();
+				final String target = in.readUTF();
 
 				if (target.equals("ALL")) {
 					out.writeUTF("PlayerList");
@@ -461,7 +461,7 @@ public abstract class SimplePlugin {
 
 				} else
 					this.proxy.getServer(target).ifPresent(info -> {
-						String playersOnServer = info.getPlayersConnected().stream().map(Player::getUsername).collect(Collectors.joining(", "));
+						final String playersOnServer = info.getPlayersConnected().stream().map(Player::getUsername).collect(Collectors.joining(", "));
 						out.writeUTF("PlayerList");
 						out.writeUTF(info.getServerInfo().getName());
 						out.writeUTF(playersOnServer);
@@ -472,11 +472,11 @@ public abstract class SimplePlugin {
 				out.writeUTF(this.proxy.getAllServers().stream().map(s -> s.getServerInfo().getName()).collect(Collectors.joining(", ")));
 
 			} else if (subChannel.equals("Message")) {
-				String target = in.readUTF();
-				String message = in.readUTF();
+				final String target = in.readUTF();
+				final String message = in.readUTF();
 
 				if (target.equals("ALL"))
-					for (Player player : this.proxy.getAllPlayers())
+					for (final Player player : this.proxy.getAllPlayers())
 						Common.tell(player, message);
 
 				else
@@ -509,7 +509,7 @@ public abstract class SimplePlugin {
 
 			else if (subChannel.equals("KickPlayer"))
 				this.proxy.getPlayer(in.readUTF()).ifPresent(player -> {
-					String kickReason = in.readUTF();
+					final String kickReason = in.readUTF();
 
 					PlayerUtil.kick(player, kickReason);
 				});
@@ -518,7 +518,7 @@ public abstract class SimplePlugin {
 				found = false;
 
 			if (found) {
-				byte[] outData = out.toByteArray();
+				final byte[] outData = out.toByteArray();
 
 				if (outData.length > 0)
 					connection.sendPluginMessage(event.getIdentifier(), outData);
@@ -533,12 +533,12 @@ public abstract class SimplePlugin {
 
 	// Credits: https://github.com/VelocityPowered/BungeeQuack/blob/master/src/main/java/com/velocitypowered/bungeequack/BungeeQuack.java
 	private byte[] prepareForwardMessage(ByteArrayDataInput in) {
-		String channel = in.readUTF();
-		short messageLength = in.readShort();
-		byte[] message = new byte[messageLength];
+		final String channel = in.readUTF();
+		final short messageLength = in.readShort();
+		final byte[] message = new byte[messageLength];
 		in.readFully(message);
 
-		ByteArrayDataOutput forwarded = ByteStreams.newDataOutput();
+		final ByteArrayDataOutput forwarded = ByteStreams.newDataOutput();
 		forwarded.writeUTF(channel);
 		forwarded.writeShort(messageLength);
 		forwarded.write(message);

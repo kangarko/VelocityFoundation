@@ -238,20 +238,21 @@ public final class IncomingMessage extends Message {
 	 * @param info
 	 */
 	public void forward(RegisteredServer info) {
+		synchronized (BungeeListener.DEFAULT_CHANNEL) {
+			if (info.getPlayersConnected().isEmpty()) {
+				Debugger.debug("bungee", "NOT sending data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server because it is empty.");
 
-		if (info.getPlayersConnected().isEmpty()) {
-			Debugger.debug("bungee", "NOT sending data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server because it is empty.");
+				return;
+			}
 
-			return;
+			if (this.data.length > 32_000) { // Safety margin
+				Common.log("[incoming] Outgoing bungee message was oversized, not sending to " + info.getServerInfo().getName() + ". Max length: 32766 bytes, got " + this.data.length + " bytes.");
+
+				return;
+			}
+
+			info.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, this.data);
+			Debugger.debug("bungee", "Forwarding data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server.");
 		}
-
-		if (this.data.length > 32_000) { // Safety margin
-			Common.log("[incoming] Outgoing bungee message was oversized, not sending to " + info.getServerInfo().getName() + ". Max length: 32766 bytes, got " + this.data.length + " bytes.");
-
-			return;
-		}
-
-		info.sendPluginMessage(BungeeListener.DEFAULT_CHANNEL, this.data);
-		Debugger.debug("bungee", "Forwarding data on " + this.getChannel() + " channel from " + this.getAction() + " to " + info.getServerInfo().getName() + " server.");
 	}
 }
