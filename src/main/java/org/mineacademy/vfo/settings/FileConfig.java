@@ -29,8 +29,6 @@ import org.mineacademy.vfo.SerializeUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.collection.StrictList;
-import org.mineacademy.vfo.command.SimpleCommand;
-import org.mineacademy.vfo.command.SimpleCommandGroup;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.model.BoxedMessage;
 import org.mineacademy.vfo.model.ConfigSerializable;

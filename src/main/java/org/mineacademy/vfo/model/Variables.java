@@ -11,9 +11,9 @@ import java.util.regex.Pattern;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.GeoAPI;
+import org.mineacademy.vfo.GeoAPI.GeoResponse;
 import org.mineacademy.vfo.Messenger;
 import org.mineacademy.vfo.TimeUtil;
-import org.mineacademy.vfo.GeoAPI.GeoResponse;
 import org.mineacademy.vfo.collection.StrictList;
 import org.mineacademy.vfo.collection.StrictMap;
 import org.mineacademy.vfo.collection.expiringmap.ExpiringMap;

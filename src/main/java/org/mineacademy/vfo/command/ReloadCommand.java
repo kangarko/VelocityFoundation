@@ -6,8 +6,8 @@ import java.util.List;
 
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.settings.SimpleLocalization;
-import org.mineacademy.vfo.settings.YamlConfig;
 import org.mineacademy.vfo.settings.SimpleLocalization.Commands;
+import org.mineacademy.vfo.settings.YamlConfig;
 
 /**
  * A simple predefined sub-command for quickly reloading the plugin

@@ -8,8 +8,6 @@ import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.StrictList;
 import org.mineacademy.vfo.constants.FoConstants;
-import org.mineacademy.vfo.debug.Debugger;
-import org.mineacademy.vfo.debug.LagCatcher;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 
 /**

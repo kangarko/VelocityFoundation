@@ -3,10 +3,6 @@ package org.mineacademy.vfo.settings;
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
 import org.mineacademy.vfo.Valid;
-import org.mineacademy.vfo.command.DebugCommand;
-import org.mineacademy.vfo.command.PermsCommand;
-import org.mineacademy.vfo.command.ReloadCommand;
-import org.mineacademy.vfo.model.ChatPaginator;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.CompChatColor;
 

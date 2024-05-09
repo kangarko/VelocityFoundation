@@ -2,8 +2,6 @@ package org.mineacademy.vfo.model;
 
 import java.io.File;
 
-import org.mineacademy.vfo.Common;
-
 public interface Rule {
 
 	/**
