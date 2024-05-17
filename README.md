@@ -18,8 +18,39 @@ VelocityFoundation is a library for fast development of Velocity plugins.
 
 ## Usage
 
-1. Include [VelocityFoundation]([url](https://jitpack.io/#kangarko/VelocityFoundation)) to your Maven/Gradle dependency.
+1. Include [VelocityFoundation]([url](https://jitpack.io/#kangarko/VelocityFoundation)) to your Maven/Gradle dependency from our JitPack.
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+```
+```xml
+<dependency>
+    <groupId>com.github.kangarko</groupId>
+    <artifactId>VelocityFoundation</artifactId>
+    <version>REPLACE_WITH_VERSION</version>
+</dependency>
+ ```
 2. Include [velocity-api]([url](https://docs.papermc.io/velocity/dev/creating-your-first-plugin#setting-up-the-dependency)) and [lombok]([url](https://mvnrepository.com/artifact/org.projectlombok/lombok)) to your dependencies.
+
+ ```xml
+<dependency>
+	<groupId>com.velocitypowered</groupId>
+	<artifactId>velocity-api</artifactId>
+	<version>3.3.0-SNAPSHOT</version>
+	<scope>provided</scope>
+</dependency>
+<dependency>
+	<groupId>org.projectlombok</groupId>
+	<artifactId>lombok</artifactId>
+	<version>1.18.32</version>
+	<scope>provided</scope>
+</dependency>
+ ```
+
 3. Relocate VelocityControl and its library nashorn. Here is a snippet for Maven to place inside <plugins> section. You need to change the shadedPattern to match your own package name.
 
 ```xml
