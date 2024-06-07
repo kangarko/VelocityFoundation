@@ -334,7 +334,7 @@ public abstract class SimplePlugin {
 	}
 
 	@Subscribe
-	public void onProxyInitialization(ProxyShutdownEvent event) {
+	public void onProxyShutdown(ProxyShutdownEvent event) {
 		try {
 			this.onPluginStop();
 
