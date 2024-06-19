@@ -48,6 +48,7 @@ import java.util.zip.GZIPOutputStream;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import org.mineacademy.vfo.remain.Remain;
 import org.slf4j.Logger;
 
 import com.velocitypowered.api.plugin.PluginContainer;
@@ -151,8 +152,8 @@ public class Metrics {
 	}
 
 	private void appendPlatformData(JsonObjectBuilder builder) {
-		builder.appendField("playerAmount", server.getPlayerCount());
-		builder.appendField("managedServers", server.getAllServers().size());
+		builder.appendField("playerAmount", Remain.getOnlinePlayers().size());
+		builder.appendField("managedServers", Remain.getServers().size());
 		builder.appendField("onlineMode", server.getConfiguration().isOnlineMode() ? 1 : 0);
 		builder.appendField("velocityVersionVersion", server.getVersion().getVersion());
 		builder.appendField("velocityVersionName", server.getVersion().getName());

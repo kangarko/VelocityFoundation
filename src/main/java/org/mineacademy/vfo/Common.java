@@ -1718,7 +1718,7 @@ public final class Common {
 	 * @return
 	 */
 	public static List<String> getServerNames() {
-		return new ArrayList<>(convert(SimplePlugin.getServer().getAllServers(), server -> server.getServerInfo().getName()));
+		return new ArrayList<>(convert(Remain.getServers(), server -> server.getServerInfo().getName()));
 	}
 
 	/**

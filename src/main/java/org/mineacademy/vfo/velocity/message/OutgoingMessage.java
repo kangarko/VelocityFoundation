@@ -12,6 +12,7 @@ import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.mineacademy.vfo.remain.Remain;
 import org.mineacademy.vfo.velocity.BungeeListener;
 import org.mineacademy.vfo.velocity.BungeeMessageType;
 
@@ -267,7 +268,7 @@ public final class OutgoingMessage extends Message {
 				return;
 			}
 
-			for (final RegisteredServer otherServer : SimplePlugin.getServer().getAllServers()) {
+			for (final RegisteredServer otherServer : Remain.getServers()) {
 				if (otherServer.getPlayersConnected().isEmpty()) {
 					Debugger.debug("bungee", "NOT sending data on " + channel + " channel from " + this.getAction() + " to " + otherServer.getServerInfo().getName() + " server because it is empty.");
 

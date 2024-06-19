@@ -415,7 +415,7 @@ public abstract class SimplePlugin {
 				final byte[] toForward = prepareForwardMessage(in);
 
 				if (target.equals("ALL")) {
-					for (final RegisteredServer rs : this.proxy.getAllServers())
+					for (final RegisteredServer rs : Remain.getServers())
 						rs.sendPluginMessage(event.getIdentifier(), toForward);
 
 				} else
@@ -457,7 +457,7 @@ public abstract class SimplePlugin {
 				if (target.equals("ALL")) {
 					out.writeUTF("PlayerList");
 					out.writeUTF("ALL");
-					out.writeUTF(this.proxy.getAllPlayers().stream().map(Player::getUsername).collect(Collectors.joining(", ")));
+					out.writeUTF(Remain.getOnlinePlayers().stream().map(Player::getUsername).collect(Collectors.joining(", ")));
 
 				} else
 					this.proxy.getServer(target).ifPresent(info -> {
@@ -469,14 +469,14 @@ public abstract class SimplePlugin {
 
 			} else if (subChannel.equals("GetServers")) {
 				out.writeUTF("GetServers");
-				out.writeUTF(this.proxy.getAllServers().stream().map(s -> s.getServerInfo().getName()).collect(Collectors.joining(", ")));
+				out.writeUTF(Remain.getServers().stream().map(s -> s.getServerInfo().getName()).collect(Collectors.joining(", ")));
 
 			} else if (subChannel.equals("Message")) {
 				final String target = in.readUTF();
 				final String message = in.readUTF();
 
 				if (target.equals("ALL"))
-					for (final Player player : this.proxy.getAllPlayers())
+					for (final Player player : Remain.getOnlinePlayers())
 						Common.tell(player, message);
 
 				else
@@ -859,6 +859,15 @@ public abstract class SimplePlugin {
 	 */
 	public final File getFile() {
 		return this.file;
+	}
+
+	/**
+	 * Return the proxy server (aka Bukkit#getServer())
+	 *
+	 * @return
+	 */
+	public final ProxyServer getProxy() {
+		return proxy;
 	}
 
 	/**

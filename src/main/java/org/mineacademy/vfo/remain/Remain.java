@@ -1,9 +1,12 @@
 package org.mineacademy.vfo.remain;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,6 +22,7 @@ import com.google.gson.Gson;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
+import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.bossbar.BossBar.Color;
@@ -78,13 +82,10 @@ public final class Remain {
 	// ----------------------------------------------------------------------------------------------------
 
 	/**
-	 * Returns all online players
-	 *
-	 * @return the online players
+	 * The server getter, used to change for Redis compatibility
 	 */
-	public static Collection<Player> getOnlinePlayers() {
-		return SimplePlugin.getServer().getAllPlayers();
-	}
+	@Setter
+	private static Supplier<Collection<RegisteredServer>> serverGetter = () -> SimplePlugin.getServer().getAllServers();
 
 	/**
 	 * Returns all servers
@@ -92,7 +93,49 @@ public final class Remain {
 	 * @return
 	 */
 	public static Collection<RegisteredServer> getServers() {
-		return SimplePlugin.getServer().getAllServers();
+		return serverGetter.get();
+	}
+
+	/**
+	 * Returns all online players
+	 *
+	 * @return the online players
+	 */
+	public static Collection<Player> getOnlinePlayers() {
+		final Collection<Player> players = new ArrayList<>();
+
+		for (final RegisteredServer serverInfo : getServers())
+			players.addAll(serverInfo.getPlayersConnected());
+
+		return players;
+	}
+
+	/**
+	 * Get the player or null if he is not online
+	 *
+	 * @param name
+	 * @return
+	 */
+	public static Player getPlayer(String name) {
+		for (final Player player : getOnlinePlayers())
+			if (player.getUsername().equalsIgnoreCase(name))
+				return player;
+
+		return null;
+	}
+
+	/**
+	 * Get the player or null if he is not online
+	 *
+	 * @param uuid
+	 * @return
+	 */
+	public static Player getPlayer(UUID uuid) {
+		for (final Player player : getOnlinePlayers())
+			if (player.getUniqueId().equals(uuid))
+				return player;
+
+		return null;
 	}
 
 	/**

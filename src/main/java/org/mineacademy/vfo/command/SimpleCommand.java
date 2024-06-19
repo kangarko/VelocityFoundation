@@ -28,6 +28,7 @@ import org.mineacademy.vfo.model.Replacer;
 import org.mineacademy.vfo.model.SimpleComponent;
 import org.mineacademy.vfo.model.SimpleTime;
 import org.mineacademy.vfo.plugin.SimplePlugin;
+import org.mineacademy.vfo.remain.Remain;
 import org.mineacademy.vfo.settings.SimpleLocalization;
 
 import com.velocitypowered.api.command.CommandSource;
@@ -1172,7 +1173,7 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	 * @return
 	 */
 	protected List<String> completeLastWordServerNames() {
-		return TabUtil.complete(this.getLastArg(), Common.convert(SimplePlugin.getServer().getAllServers(), server -> server.getServerInfo().getName()));
+		return TabUtil.complete(this.getLastArg(), Common.convert(Remain.getServers(), server -> server.getServerInfo().getName()));
 	}
 
 	/**
