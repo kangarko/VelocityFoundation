@@ -88,6 +88,20 @@ public final class Remain {
 	private static Supplier<Collection<RegisteredServer>> serverGetter = () -> SimplePlugin.getServer().getAllServers();
 
 	/**
+	 * Return the server by the given name
+	 *
+	 * @param name
+	 * @return
+	 */
+	public static RegisteredServer getServer(String name) {
+		for (final RegisteredServer server : Remain.getServers())
+			if (server.getServerInfo().getName().equalsIgnoreCase(name))
+				return server;
+
+		return null;
+	}
+
+	/**
 	 * Returns all servers
 	 *
 	 * @return
