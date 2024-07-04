@@ -20,7 +20,6 @@ import org.mineacademy.vfo.collection.expiringmap.ExpiringMap;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.CompChatColor;
 import org.mineacademy.vfo.settings.SimpleLocalization;
-import org.mineacademy.vfo.settings.SimpleSettings;
 
 import com.velocitypowered.api.proxy.Player;
 
@@ -377,9 +376,9 @@ public final class Variables {
 		}
 
 		switch (variable) {
-			case "timestamp":
-				return SimpleSettings.TIMESTAMP_FORMAT.format(System.currentTimeMillis());
-			case "timestamp_short":
+			case "date":
+				return TimeUtil.getFormattedDate();
+			case "date_short":
 				return TimeUtil.getFormattedDateShort();
 			case "chat_line":
 				return Common.chatLine();
