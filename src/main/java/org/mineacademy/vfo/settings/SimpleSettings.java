@@ -8,6 +8,8 @@ import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.StrictList;
 import org.mineacademy.vfo.constants.FoConstants;
+import org.mineacademy.vfo.debug.Debugger;
+import org.mineacademy.vfo.debug.LagCatcher;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 
 /**
@@ -46,14 +48,24 @@ public class SimpleSettings extends YamlStaticConfig {
 		return FoConstants.File.SETTINGS;
 	}
 
+	/**
+	 * Always keep settings.yml file up to date
+	 */
+	@Override
+	protected final boolean alwaysSaveOnLoad() {
+		return true;
+	}
+
 	// --------------------------------------------------------------------
 	// Version
 	// --------------------------------------------------------------------
 
 	/**
-	 * The configuration version number, found in the "Version" key in the file.,
+	 * The configuration version number, found in the "Version" key in the file.
+	 *
+	 * Defaults to 1 if not set in the file.
 	 */
-	public static Integer VERSION;
+	public static Integer VERSION = 1;
 
 	/**
 	 * Set and update the config version automatically, however the {@link #VERSION} will
@@ -67,8 +79,9 @@ public class SimpleSettings extends YamlStaticConfig {
 		// Load version first so we can use it later
 		setPathPrefix(null);
 
-		if ((VERSION = getInteger("Version")) != this.getConfigVersion())
-			set("Version", this.getConfigVersion());
+		if (isSetDefault("Version"))
+			if ((VERSION = getInteger("Version")) != this.getConfigVersion())
+				set("Version", this.getConfigVersion());
 	}
 
 	/**
@@ -88,9 +101,11 @@ public class SimpleSettings extends YamlStaticConfig {
 	// --------------------------------------------------------------------
 
 	/**
-	 * The {timestamp} format.
+	 * The {timestamp} and {date}, {date_short} and {date_month} formats.
 	 */
-	public static DateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+	public static DateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
+	public static DateFormat DATE_FORMAT_SHORT = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+	public static DateFormat DATE_FORMAT_MONTH = new SimpleDateFormat("dd.MM HH:mm");
 
 	/**
 	 * The {location} format.
@@ -161,12 +176,28 @@ public class SimpleSettings extends YamlStaticConfig {
 		setPathPrefix(null);
 		upgradeOldSettings();
 
-		if (isSetDefault("Timestamp_Format"))
+		if (isSetDefault("Date_Format"))
 			try {
-				TIMESTAMP_FORMAT = new SimpleDateFormat(getString("Timestamp_Format"));
+				DATE_FORMAT = new SimpleDateFormat(getString("Date_Format"));
 
 			} catch (final IllegalArgumentException ex) {
-				Common.throwError(ex, "Wrong 'Timestamp_Format '" + getString("Timestamp_Format") + "', see https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for examples'");
+				Common.throwError(ex, "Wrong 'Date_Format '" + getString("Date_Format") + "', see https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for examples'");
+			}
+
+		if (isSetDefault("Date_Format_Short"))
+			try {
+				DATE_FORMAT_SHORT = new SimpleDateFormat(getString("Date_Format_Short"));
+
+			} catch (final IllegalArgumentException ex) {
+				Common.throwError(ex, "Wrong 'Date_Format_Short '" + getString("Date_Format_Short") + "', see https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for examples'");
+			}
+
+		if (isSetDefault("Date_Format_Month"))
+			try {
+				DATE_FORMAT_MONTH = new SimpleDateFormat(getString("Date_Format_Month"));
+
+			} catch (final IllegalArgumentException ex) {
+				Common.throwError(ex, "Wrong 'Date_Format_Month '" + getString("Date_Format_Month") + "', see https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for examples'");
 			}
 
 		if (isSetDefault("Location_Format"))

@@ -59,6 +59,11 @@ public abstract class YamlStaticConfig {
 			}
 
 			@Override
+			protected boolean alwaysSaveOnLoad() {
+				return YamlStaticConfig.this.alwaysSaveOnLoad();
+			}
+
+			@Override
 			protected List<String> getUncommentedSections() {
 				return YamlStaticConfig.this.getUncommentedSections();
 			}
@@ -130,6 +135,15 @@ public abstract class YamlStaticConfig {
 	}
 
 	/**
+	 * Return true if we should always save the file after loading it.
+	 *
+	 * @return
+	 */
+	protected boolean alwaysSaveOnLoad() {
+		return false;
+	}
+
+	/**
 	 * See {@link #saveComments()}
 	 *
 	 * @return
@@ -173,22 +187,20 @@ public abstract class YamlStaticConfig {
 		this.invokeMethodsIn(clazz);
 
 		// All sub-classes in superclass.
-		for (final Class<?> subClazz : clazz.getDeclaredClasses()) {
-			this.invokeMethodsIn(subClazz);
-
-			// And classes in sub-classes in superclass.
-			for (final Class<?> subSubClazz : subClazz.getDeclaredClasses())
-				this.invokeMethodsIn(subSubClazz);
-		}
+		for (final Class<?> subClazz : clazz.getDeclaredClasses())
+			this.invokeAll(subClazz);
 	}
 
 	/*
 	 * Invoke all "private static void init()" methods in the class
 	 */
 	private void invokeMethodsIn(final Class<?> clazz) throws Exception {
+		final SimplePlugin instance = SimplePlugin.getInstance();
+
 		for (final Method method : clazz.getDeclaredMethods()) {
 
-			if (!SimplePlugin.getInstance().isEnabled())
+			// After each invocation check if the invoication broke the plugin and ignore
+			if (!instance.isEnabled())
 				return;
 
 			final int mod = method.getModifiers();
@@ -259,6 +271,15 @@ public abstract class YamlStaticConfig {
 		TEMPORARY_INSTANCE.move(fromRelative, toAbsolute);
 	}
 
+	/**
+	 * @deprecated renamed, use {@link #setPathPrefix(String)} instead
+	 * @param pathPrefix
+	 */
+	@Deprecated
+	protected static final void pathPrefix(final String pathPrefix) {
+		setPathPrefix(pathPrefix);
+	}
+
 	protected static final void setPathPrefix(final String pathPrefix) {
 		TEMPORARY_INSTANCE.setPathPrefix(pathPrefix);
 	}
@@ -315,10 +336,6 @@ public abstract class YamlStaticConfig {
 
 	protected static final int getInteger(final String path) {
 		return TEMPORARY_INSTANCE.getInteger(path);
-	}
-
-	protected static final int getInteger(final String path, int def) {
-		return TEMPORARY_INSTANCE.getInteger(path, def);
 	}
 
 	protected static final double getDouble(final String path) {

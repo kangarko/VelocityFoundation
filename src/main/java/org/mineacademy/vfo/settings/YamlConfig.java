@@ -12,6 +12,7 @@ import javax.annotation.Nullable;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
+import org.mineacademy.vfo.ReflectionUtil;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -25,7 +26,7 @@ import lombok.NonNull;
 
 /**
  * The core settings class. Fully compatible with Minecraft 1.7.10 to the
- * latest one, including comments support (default file required, see saveComments())
+ * latest one, including comments support (default file required, see saveComments()
  * and automatic config upgrading if we request a value that only exist in the default file.
  */
 public class YamlConfig extends FileConfig {
@@ -44,20 +45,57 @@ public class YamlConfig extends FileConfig {
 	 * Create a new instance (do not load it, use {@link #load(File)} to load)
 	 */
 	protected YamlConfig() {
-
 		final DumperOptions dumperOptions = new DumperOptions();
 		dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 		dumperOptions.setIndent(2);
 		dumperOptions.setWidth(4096); // Do not wrap long lines
 
-		final LoaderOptions loaderOptions = new LoaderOptions();
-		loaderOptions.setMaxAliasesForCollections(Integer.MAX_VALUE);
+		YamlRepresenter representer;
 
-		final YamlConstructor constructor = new YamlConstructor(loaderOptions);
-		final YamlRepresenter representer = new YamlRepresenter(dumperOptions);
+		try {
+			representer = new YamlRepresenter(dumperOptions);
+
+		} catch (final Throwable t) {
+			representer = new YamlRepresenter();
+		}
+
 		representer.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 
-		this.yaml = new Yaml(constructor, representer, dumperOptions, loaderOptions);
+		// Load options only if available
+		if (ReflectionUtil.isClassAvailable("org.yaml.snakeyaml.LoaderOptions")) {
+			final LoaderOptions loaderOptions = new LoaderOptions();
+
+			Yaml yaml;
+			YamlConstructor constructor;
+
+			try {
+				constructor = new YamlConstructor(loaderOptions);
+
+			} catch (final Throwable t) {
+				// 1.12
+				constructor = new YamlConstructor();
+			}
+
+			try {
+				loaderOptions.setMaxAliasesForCollections(Integer.MAX_VALUE);
+				loaderOptions.setCodePointLimit(Integer.MAX_VALUE);
+
+			} catch (final Throwable t) {
+				// Thankfully unsupported
+				// https://i.imgur.com/wAgKukK.png
+			}
+
+			try {
+				yaml = new Yaml(constructor, representer, dumperOptions, loaderOptions);
+			} catch (final Throwable t) {
+				yaml = new Yaml(constructor, representer, dumperOptions);
+			}
+
+			this.yaml = yaml;
+		}
+
+		else
+			this.yaml = new Yaml(new YamlConstructor(), representer, dumperOptions);
 	}
 
 	/**
@@ -148,8 +186,16 @@ public class YamlConfig extends FileConfig {
 			this.defaultsPath = from;
 		}
 
-		else
-			file = FileUtil.getOrMakeFile(to);
+		else {
+			file = FileUtil.getFile(to);
+
+			if (!file.exists()) {
+				FileUtil.createIfNotExists(to);
+
+				if (this.getHeader() != null)
+					this.shouldSave = true;
+			}
+		}
 
 		this.load(file);
 	}
@@ -171,11 +217,19 @@ public class YamlConfig extends FileConfig {
 	 */
 	@NonNull
 	@Override
-	final String saveToString() {
+	public final String saveToString() {
 
 		// Do not use comments
 		if (this.defaults == null || !this.saveComments()) {
-			final String header = this.getHeader() == null ? "" : "# " + String.join("\n# ", this.getHeader().split("\n")) + "\n\n";
+			String header = "";
+
+			if (this.getHeader() != null) {
+				for (final String line : this.getHeader())
+					header += "# " + line + "\n";
+
+				header += "\n";
+			}
+
 			final Map<String, Object> values = this.section.getValues(false);
 
 			if (!this.saveEmptyValues)
@@ -310,6 +364,16 @@ public class YamlConfig extends FileConfig {
 		return string.trim().isEmpty() ? "" : string + "\n";
 	}
 
+	@Override
+	public int hashCode() {
+		return this.getFileName().hashCode();
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return obj instanceof YamlConfig && ((YamlConfig) obj).getFileName().equals(this.getFileName());
+	}
+
 	// -----------------------------------------------------------------------------------------------------
 	// Static
 	// -----------------------------------------------------------------------------------------------------
@@ -371,7 +435,28 @@ public class YamlConfig extends FileConfig {
 		try {
 			config.load(file);
 		} catch (final Exception ex) {
-			Common.error(ex, "Cannot load " + file.getAbsolutePath());
+			Common.error(ex, "Cannot load " + file);
+		}
+
+		return config;
+	}
+
+	/**
+	 * Loads configuration from the file in your plugin's folder.
+	 *
+	 * @param file
+	 * @return
+	 */
+	@NonNull
+	public static final YamlConfig fromFileFast(@NonNull File file) {
+		final YamlConfig config = new YamlConfig();
+
+		try {
+			final List<String> content = FileUtil.readLines(file);
+			config.loadFromString(String.join("\n", content));
+
+		} catch (final Exception ex) {
+			Common.error(ex, "Cannot load " + file);
 		}
 
 		return config;
@@ -392,6 +477,12 @@ public class YamlConfig extends FileConfig {
 			this.yamlConstructors.put(Tag.MAP, new ConstructCustomObject());
 		}
 
+		public YamlConstructor() {
+			super();
+
+			this.yamlConstructors.put(Tag.MAP, new ConstructCustomObject());
+		}
+
 		private class ConstructCustomObject extends ConstructYamlMap {
 
 			@Override
@@ -399,9 +490,7 @@ public class YamlConfig extends FileConfig {
 				if (node.isTwoStepsConstruction())
 					throw new YAMLException("Unexpected referential mapping structure. Node: " + node);
 
-				final Map<?, ?> raw = (Map<?, ?>) super.construct(node);
-
-				return raw;
+				return super.construct(node);
 			}
 
 			@Override
@@ -418,6 +507,13 @@ public class YamlConfig extends FileConfig {
 
 		public YamlRepresenter(DumperOptions options) {
 			super(options);
+
+			this.multiRepresenters.put(ConfigSection.class, new RepresentConfigurationSection());
+			this.multiRepresenters.remove(Enum.class);
+		}
+
+		public YamlRepresenter() {
+			super();
 
 			this.multiRepresenters.put(ConfigSection.class, new RepresentConfigurationSection());
 			this.multiRepresenters.remove(Enum.class);

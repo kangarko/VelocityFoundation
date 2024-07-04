@@ -3,8 +3,13 @@ package org.mineacademy.vfo.settings;
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
 import org.mineacademy.vfo.Valid;
+import org.mineacademy.vfo.command.DebugCommand;
+import org.mineacademy.vfo.command.PermsCommand;
+import org.mineacademy.vfo.command.ReloadCommand;
+import org.mineacademy.vfo.model.ChatPaginator;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.CompChatColor;
+import org.mineacademy.vfo.settings.FileConfig.AccusativeHelper;
 
 /**
  * A simple implementation of a basic localization file.
@@ -52,8 +57,10 @@ public class SimpleLocalization extends YamlStaticConfig {
 
 	/**
 	 * The configuration version number, found in the "Version" key in the file.,
+	 *
+	 * Defaults to 1 if not set in the file.
 	 */
-	protected static Integer VERSION;
+	public static Integer VERSION = 1;
 
 	/**
 	 * Set and update the config version automatically, however the {@link #VERSION} will
@@ -67,8 +74,9 @@ public class SimpleLocalization extends YamlStaticConfig {
 		// Load version first so we can use it later
 		setPathPrefix(null);
 
-		if ((VERSION = getInteger("Version")) != this.getConfigVersion())
-			set("Version", this.getConfigVersion());
+		if (isSetDefault("Version"))
+			if ((VERSION = getInteger("Version")) != this.getConfigVersion())
+				set("Version", this.getConfigVersion());
 	}
 
 	/**
@@ -80,6 +88,14 @@ public class SimpleLocalization extends YamlStaticConfig {
 	 */
 	protected int getConfigVersion() {
 		return 1;
+	}
+
+	/**
+	 * Always keep the lang file up to date.
+	 */
+	@Override
+	protected final boolean alwaysSaveOnLoad() {
+		return true;
 	}
 
 	// --------------------------------------------------------------------
@@ -141,11 +157,6 @@ public class SimpleLocalization extends YamlStaticConfig {
 		public static String LABEL_REQUIRED_ARGS = "required arguments";
 
 		/**
-		 * The multiline usages label
-		 */
-		public static String LABEL_USAGES = "&c&lUsages:";
-
-		/**
 		 * The usage label
 		 */
 		public static String LABEL_USAGE = "&c&lUsage:";
@@ -202,19 +213,39 @@ public class SimpleLocalization extends YamlStaticConfig {
 		public static CompChatColor HEADER_SECONDARY_COLOR = CompChatColor.RED;
 
 		/**
-		 * Key for when plugin is reloading {@link org.mineacademy.vfo.plugin.SimplePlugin}
+		 * The format of the header
+		 */
+		public static String HEADER_FORMAT = "&r\n{theme_color}&m<center>&r{theme_color} {title} &m\n&r";
+
+		/**
+		 * The center character of the format in case \<center\> is used
+		 */
+		public static String HEADER_CENTER_LETTER = "-";
+
+		/**
+		 * The padding of the header in case \<center\> is used
+		 */
+		public static Integer HEADER_CENTER_PADDING = 130;
+
+		/**
+		 * Key for when plugin is reloading {@link SimplePlugin}
 		 */
 		public static String RELOADING = "reloading";
 
 		/**
-		 * Key for when plugin is disabled {@link org.mineacademy.vfo.plugin.SimplePlugin}
+		 * Key for when plugin is disabled {@link SimplePlugin}
 		 */
 		public static String DISABLED = "disabled";
 
 		/**
 		 * The message shown when plugin is reloading or was disabled and player attempts to run command
 		 */
-		public static String USE_WHILE_NULL = "&cCannot use this command while the plugin is {state}.";
+		public static String CANNOT_USE_WHILE_NULL = "&cCannot use this command while the plugin is {state}.";
+
+		/**
+		 * The message shown in SimpleCommand.findWorld()
+		 */
+		public static String CANNOT_AUTODETECT_WORLD = "Only living players can use ~ for their world!";
 
 		/**
 		 * The keys below are used in the {@link DebugCommand}
@@ -297,9 +328,6 @@ public class SimpleLocalization extends YamlStaticConfig {
 			if (isSetDefault("Label_Subcommand_Description"))
 				LABEL_SUBCOMMAND_DESCRIPTION = getString("Label_Subcommand_Description");
 
-			if (isSetDefault("Label_Usages"))
-				LABEL_USAGES = getString("Label_Usages");
-
 			if (isSetDefault("Help_Tooltip_Description"))
 				HELP_TOOLTIP_DESCRIPTION = getString("Help_Tooltip_Description");
 
@@ -339,6 +367,18 @@ public class SimpleLocalization extends YamlStaticConfig {
 			if (isSetDefault("Header_Secondary_Color"))
 				HEADER_SECONDARY_COLOR = get("Header_Secondary_Color", CompChatColor.class);
 
+			if (isSetDefault("Header_Format"))
+				HEADER_FORMAT = getString("Header_Format");
+
+			if (isSetDefault("Header_Center_Letter")) {
+				HEADER_CENTER_LETTER = getString("Header_Center_Letter");
+
+				Valid.checkBoolean(HEADER_CENTER_LETTER.length() == 1, "Header_Center_Letter must only have 1 letter, not " + HEADER_CENTER_LETTER.length() + ":" + HEADER_CENTER_LETTER);
+			}
+
+			if (isSetDefault("Header_Center_Padding"))
+				HEADER_CENTER_PADDING = getInteger("Header_Center_Padding");
+
 			if (isSet("Reloading"))
 				RELOADING = getString("Reloading");
 
@@ -346,7 +386,10 @@ public class SimpleLocalization extends YamlStaticConfig {
 				DISABLED = getString("Disabled");
 
 			if (isSet("Use_While_Null"))
-				USE_WHILE_NULL = getString("Use_While_Null");
+				CANNOT_USE_WHILE_NULL = getString("Use_While_Null");
+
+			if (isSet("Cannot_Autodetect_World"))
+				CANNOT_AUTODETECT_WORLD = getString("Cannot_Autodetect_World");
 
 			if (isSetDefault("Debug_Description"))
 				DEBUG_DESCRIPTION = getString("Debug_Description");
@@ -399,40 +442,6 @@ public class SimpleLocalization extends YamlStaticConfig {
 	}
 
 	/**
-	 * Strings related to player-server conversation waiting for his chat input
-	 */
-	public static final class Conversation {
-
-		/**
-		 * The key used when the player wants to converse but he is not conversing.
-		 */
-		public static String CONVERSATION_NOT_CONVERSING = "&cYou must be conversing with the server!";
-
-		/**
-		 * Called when console attempts to start conversing
-		 */
-		public static String CONVERSATION_REQUIRES_PLAYER = "Only players may enter this conversation.";
-
-		/**
-		 * Called in the try-catch handling when an error occurs
-		 */
-		public static String CONVERSATION_ERROR = "&cOups! There was a problem in this conversation! Please contact the administrator to review the console for details.";
-
-		private static void init() {
-			setPathPrefix("Conversation");
-
-			if (isSetDefault("Not_Conversing"))
-				CONVERSATION_NOT_CONVERSING = getString("Not_Conversing");
-
-			if (isSetDefault("Requires_Player"))
-				CONVERSATION_REQUIRES_PLAYER = getString("Requires_Player");
-
-			if (isSetDefault("Conversation_Error"))
-				CONVERSATION_ERROR = getString("Error");
-		}
-	}
-
-	/**
 	 * Key related to players
 	 */
 	public static final class Player {
@@ -443,9 +452,9 @@ public class SimpleLocalization extends YamlStaticConfig {
 		public static String NOT_ONLINE = "&cPlayer {player} &cis not online on this server.";
 
 		/**
-		 * Message shown when the player has not played before
+		 * Message shown the an offline player is returned null from a given UUID.
 		 */
-		public static String NOT_PLAYED_BEFORE = "&cPlayer {player} &chas not played before or we could not locate his disk data.";
+		public static String INVALID_UUID = "&cCould not find a player from UUID {uuid}.";
 
 		/**
 		 * Load the values -- this method is called automatically by reflection in the {@link YamlStaticConfig} class!
@@ -456,8 +465,8 @@ public class SimpleLocalization extends YamlStaticConfig {
 			if (isSetDefault("Not_Online"))
 				NOT_ONLINE = getString("Not_Online");
 
-			if (isSetDefault("Not_Played_Before"))
-				NOT_PLAYED_BEFORE = getString("Not_Played_Before");
+			if (isSetDefault("Invalid_UUID"))
+				INVALID_UUID = getString("Invalid_UUID");
 		}
 	}
 
@@ -467,11 +476,12 @@ public class SimpleLocalization extends YamlStaticConfig {
 	public static final class Pages {
 
 		public static String NO_PAGE_NUMBER = "&cPlease specify the page number for this command.";
-		public static String NO_PAGES = "&cYou do not have any pages saved to show.";
+		public static String NO_PAGES = "There are no results to list.";
 		public static String NO_PAGE = "Pages do not contain the given page number.";
 		public static String INVALID_PAGE = "&cYour input '{input}' is not a valid number.";
 		public static String GO_TO_PAGE = "&7Go to page {page}";
 		public static String GO_TO_FIRST_PAGE = "&7Go to the first page";
+		public static String GO_TO_LAST_PAGE = "&7Go to the last page";
 		public static String[] TOOLTIP = {
 				"&7You can also navigate using the",
 				"&7hidden /#flp <page> command."
@@ -500,6 +510,9 @@ public class SimpleLocalization extends YamlStaticConfig {
 
 			if (isSetDefault("Go_To_First_Page"))
 				GO_TO_FIRST_PAGE = getString("Go_To_First_Page");
+
+			if (isSetDefault("Go_To_Last_Page"))
+				GO_TO_LAST_PAGE = getString("Go_To_Last_Page");
 
 			if (isSetDefault("Tooltip"))
 				TOOLTIP = Common.toArray(getStringList("Tooltip"));
@@ -605,6 +618,45 @@ public class SimpleLocalization extends YamlStaticConfig {
 	}
 
 	/**
+	 * Keys related to cases
+	 */
+	public static class Cases {
+
+		public static AccusativeHelper SECOND = AccusativeHelper.of("second", "seconds");
+		public static AccusativeHelper MINUTE = AccusativeHelper.of("minute", "minutes");
+		public static AccusativeHelper HOUR = AccusativeHelper.of("hour", "hours");
+		public static AccusativeHelper DAY = AccusativeHelper.of("day", "days");
+		public static AccusativeHelper WEEK = AccusativeHelper.of("week", "weeks");
+		public static AccusativeHelper MONTH = AccusativeHelper.of("month", "months");
+		public static AccusativeHelper YEAR = AccusativeHelper.of("year", "years");
+
+		private static void init() {
+			setPathPrefix("Cases");
+
+			if (isSetDefault("Second"))
+				SECOND = getCasus("Second");
+
+			if (isSetDefault("Minute"))
+				MINUTE = getCasus("Minute");
+
+			if (isSetDefault("Hour"))
+				HOUR = getCasus("Hour");
+
+			if (isSetDefault("Day"))
+				DAY = getCasus("Day");
+
+			if (isSetDefault("Week"))
+				WEEK = getCasus("Week");
+
+			if (isSetDefault("Month"))
+				MONTH = getCasus("Month");
+
+			if (isSetDefault("Year"))
+				YEAR = getCasus("Year");
+		}
+	}
+
+	/**
 	 * Keys related to updating the plugin
 	 */
 	public static final class Update {
@@ -665,7 +717,7 @@ public class SimpleLocalization extends YamlStaticConfig {
 	public static String CONSOLE_NAME = "Console";
 
 	/**
-	 * The message when a section is missing from data.db file (typically we use
+	 * The message when a section is missing from data file (the one ending in .db) (typically we use
 	 * this file to store serialized values such as arenas from minigame plugins).
 	 */
 	public static String DATA_MISSING = "&c{name} lacks database information! Please only create {type} in-game! Skipping..";

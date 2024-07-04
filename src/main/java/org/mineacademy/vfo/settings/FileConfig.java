@@ -22,25 +22,29 @@ import java.util.Set;
 import java.util.function.Function;
 
 import javax.annotation.Nullable;
-import javax.xml.stream.Location;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.SerializeUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.collection.StrictList;
+import org.mineacademy.vfo.command.SimpleCommand;
+import org.mineacademy.vfo.command.SimpleCommandGroup;
+import org.mineacademy.vfo.exception.EventHandledException;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.model.BoxedMessage;
 import org.mineacademy.vfo.model.ConfigSerializable;
 import org.mineacademy.vfo.model.IsInList;
 import org.mineacademy.vfo.model.SimpleTime;
 import org.mineacademy.vfo.model.Tuple;
+import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.Remain;
+
+import com.velocitypowered.api.proxy.Player;
 
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.Setter;
-import net.kyori.adventure.audience.Audience;
 
 /**
  * Represents any configuration that can be stored in a file
@@ -63,6 +67,7 @@ public abstract class FileConfig {
 	 * The file that is being used
 	 */
 	@Nullable
+	@Setter(value = AccessLevel.PROTECTED)
 	File file;
 
 	/*
@@ -86,7 +91,7 @@ public abstract class FileConfig {
 	 * Optional config header
 	 */
 	@Nullable
-	private String header;
+	private String[] header;
 
 	/**
 	 * Path prefix to automatically append when calling any getX method
@@ -106,12 +111,17 @@ public abstract class FileConfig {
 	 * Internal flag to only save once during loading and save automatically
 	 * after loading if any changes were made.
 	 */
-	private boolean shouldSave = false;
+	boolean shouldSave = false;
 
 	/*
 	 * Internal flag to avoid duplicate save calls during loading
 	 */
 	private boolean loading = false;
+
+	/*
+	 * Internal flag to avoid race condition when calling save() in onSave().
+	 */
+	private boolean saving = false;
 
 	protected FileConfig() {
 	}
@@ -136,8 +146,11 @@ public abstract class FileConfig {
 	 *
 	 * @param deep
 	 * @return
+	 *
+	 * @deprecated it is recommended that you use getMap("") instead or for loop in getKeys(deep) and getMap(key) for each
+	 * 			   key and print out the results to console to understand the differences
 	 */
-	@NonNull
+	@Deprecated
 	public final Map<String, Object> getValues(boolean deep) {
 		return this.section.getValues(deep);
 	}
@@ -390,35 +403,6 @@ public abstract class FileConfig {
 			Valid.checkBoolean(raw instanceof Number, "Expected a number at '" + path + "', got " + raw.getClass().getSimpleName() + ": " + raw);
 
 		return raw != null ? ((Number) raw).doubleValue() : null;
-	}
-
-	/**
-	 * Return a Location from the key at the given path
-	 * (see {@link #get(String, Class, Object, Object...)}).
-	 *
-	 * We use a custom method to store location on one line, this won't work
-	 * when using Bukkit's getLocation since Bukkit stores in using multiple keys.
-	 *
-	 * @param path
-	 * @return
-	 */
-	public final Location getLocation(final String path) {
-		return this.getLocation(path, null);
-	}
-
-	/**
-	 * Return a Location from the key at the given path, or supply with default
-	 * (see {@link #get(String, Class, Object, Object...)}).
-	 *
-	 * We use a custom method to store location on one line, this won't work
-	 * when using Bukkit's getLocation since Bukkit stores in using multiple keys.
-	 *
-	 * @param path
-	 * @param def
-	 * @return
-	 */
-	public final Location getLocation(final String path, final Location def) {
-		return this.get(path, Location.class, def);
 	}
 
 	/**
@@ -807,6 +791,9 @@ public abstract class FileConfig {
 	public final List<Object> getList(final String path) {
 		final Object obj = this.getObject(path);
 
+		if (obj != null && obj.toString().equals("[]"))
+			return new ArrayList<>();
+
 		return obj instanceof Collection<?> ? new ArrayList<>((Collection<Object>) obj) : obj != null ? Arrays.asList(obj) : new ArrayList<>();
 	}
 
@@ -857,17 +844,16 @@ public abstract class FileConfig {
 		}
 
 		// Load key-value pairs from config to our map
-		if (exists)
-			for (final Map.Entry<String, Object> entry : SerializedMap.of(this.section.retrieve(path))) {
-				final Key key = SerializeUtil.deserialize(keyType, entry.getKey());
-				final Value value = SerializeUtil.deserialize(valueType, entry.getValue(), valueDeserializeParams);
+		for (final Map.Entry<String, Object> entry : SerializedMap.of(this.section.retrieve(path))) {
+			final Key key = SerializeUtil.deserialize(keyType, entry.getKey());
+			final Value value = SerializeUtil.deserialize(valueType, entry.getValue(), valueDeserializeParams);
 
-				// Ensure the pair values are valid for the given paramenters
-				this.checkAssignable(path, key, keyType);
-				this.checkAssignable(path, value, valueType);
+			// Ensure the pair values are valid for the given paramenters
+			this.checkAssignable(path, key, keyType);
+			this.checkAssignable(path, value, valueType);
 
-				map.put(key, value);
-			}
+			map.put(key, value);
+		}
 
 		return map;
 	}
@@ -1013,6 +999,9 @@ public abstract class FileConfig {
 	 * Attempts to load the file configuration, not saving any changes made since last loading it.
 	 */
 	public final void reload() {
+		if (this.file == null && this.skipSaveIfNoFile())
+			return;
+
 		Valid.checkNotNull(this.file, "Cannot call reload() before loading a file!");
 
 		this.load(this.file);
@@ -1021,7 +1010,7 @@ public abstract class FileConfig {
 	/*
 	 * Helper to load configuration from a file
 	 */
-	synchronized final void load(@NonNull File file) {
+	final void load(@NonNull File file) {
 		try {
 			Valid.checkBoolean(!this.loading, "Called load(" + file + ") on already being loaded configuration!");
 			this.loading = true;
@@ -1048,9 +1037,15 @@ public abstract class FileConfig {
 			} else
 				this.load(new InputStreamReader(stream, StandardCharsets.UTF_8));
 
-			this.onLoad();
+			try {
+				this.onLoad();
+				this.onLoadFinish();
 
-			if (this.shouldSave) {
+			} catch (final EventHandledException ex) {
+				// Handled successfully in the polymorphism pipeline
+			}
+
+			if (this.shouldSave || this.alwaysSaveOnLoad()) {
 				this.loading = false;
 				this.save();
 
@@ -1102,14 +1097,28 @@ public abstract class FileConfig {
 	/**
 	 * Called automatically when the configuration has been loaded, used to load your
 	 * fields in your class here.
+	 *
+	 * You can throw {@link EventHandledException} here to indicate to your child class to interrupt loading
 	 */
 	protected void onLoad() {
+	}
+
+	/**
+	 * @see #onLoad()
+	 *
+	 * @deprecated Renamed to {@link #onLoad()}, use that instead.
+	 */
+	@Deprecated
+	protected void onLoadFinish() {
 	}
 
 	/**
 	 * Save the configuration to the file immediately (you need to call loadConfiguration(File) first)
 	 */
 	public final void save() {
+		if (this.file == null && this.skipSaveIfNoFile())
+			return;
+
 		Valid.checkNotNull(this.file, "Cannot call save() for " + this + " when no file was set! Call load first!");
 
 		this.save(this.file);
@@ -1120,7 +1129,10 @@ public abstract class FileConfig {
 	 *
 	 * @param file
 	 */
-	public final synchronized void save(@NonNull File file) {
+	public final void save(@NonNull File file) {
+		if (this.saving)
+			return;
+
 		try {
 			if (this.loading) {
 				this.shouldSave = true;
@@ -1128,8 +1140,20 @@ public abstract class FileConfig {
 				return;
 			}
 
+			this.onPreSave();
+
 			if (this.canSaveFile()) {
-				this.onSave();
+
+				try {
+					this.saving = true;
+					this.onSave();
+
+				} catch (final EventHandledException ex) {
+					// Ignore, indicated that we exited polymorphism inheritance prematurely by intention
+
+				} finally {
+					this.saving = false;
+				}
 
 				final File parent = file.getCanonicalFile().getParentFile();
 
@@ -1138,16 +1162,13 @@ public abstract class FileConfig {
 
 				final String data = this.saveToString();
 
-				if (data != null) {
-					final Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
-
-					try {
+				if (data != null)
+					try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
 						writer.write(data);
 
-					} finally {
-						writer.close();
+					} catch (final Exception ex) {
+						Remain.sneaky(ex);
 					}
-				}
 
 				// Update file
 				this.file = file;
@@ -1159,14 +1180,36 @@ public abstract class FileConfig {
 	}
 
 	/**
+	 * Return true if we should always save the file after loading it.
+	 *
+	 * @return
+	 */
+	protected boolean alwaysSaveOnLoad() {
+		return false;
+	}
+
+	/**
+	 * Called automatically before {@link #canSaveFile()}
+	 */
+	protected void onPreSave() {
+	}
+
+	/**
 	 * Called automatically on saving the configuration, you can call "set(path, value)" methods here
 	 * to save your class fields. We automatically save what you have in {@link #saveToMap()} if not null.
+	 *
+	 * Called after {@link #canSaveFile()}
 	 */
 	protected void onSave() {
 		final SerializedMap map = this.saveToMap();
+		final SerializedMap legacy = this.serialize();
+
+		if (legacy != null)
+			map.put(legacy);
 
 		if (map != null)
-			this.set("", map);
+			for (final Map.Entry<String, Object> entry : map.entrySet())
+				this.set(entry.getKey(), entry.getValue());
 	}
 
 	/**
@@ -1179,12 +1222,22 @@ public abstract class FileConfig {
 	}
 
 	/**
+	 * false (default) = will raise an exception if no file is set and attempting to call save()
+	 * true = will fail gracefully in the above scenario
+	 *
+	 * @return
+	 */
+	protected boolean skipSaveIfNoFile() {
+		return false;
+	}
+
+	/**
 	 * Implementation by specific configurations to generate file contents to save.
 	 *
 	 * @return
 	 */
 	@NonNull
-	abstract String saveToString();
+	public abstract String saveToString();
 
 	/**
 	 * Override to implement custom saving mechanism, used automatically in onSave()
@@ -1195,6 +1248,17 @@ public abstract class FileConfig {
 	 * @return
 	 */
 	public SerializedMap saveToMap() {
+		return null;
+	}
+
+	/**
+	 * @see #saveToMap()
+	 * @deprecated renamed, override {@link #saveToMap()} instead
+	 *
+	 * @return
+	 */
+	@Deprecated
+	protected SerializedMap serialize() {
 		return null;
 	}
 
@@ -1267,7 +1331,7 @@ public abstract class FileConfig {
 	 *
 	 * @return
 	 */
-	public final String getHeader() {
+	public final String[] getHeader() {
 		return this.header;
 	}
 
@@ -1278,7 +1342,22 @@ public abstract class FileConfig {
 	 * @param values
 	 */
 	public final void setHeader(String... values) {
-		this.header = values == null ? null : String.join("\n", values);
+		if (values == null)
+			this.header = null;
+
+		else {
+			final String mainCommandLabel = Common.getOrEmpty(SimpleSettings.MAIN_COMMAND_ALIASES.first());
+			final List<String> header = new ArrayList<>();
+
+			for (int i = 0; i < values.length; i++) {
+				final String line = Common.getOrEmpty(values[i]);
+
+				for (final String subline : line.replace("{plugin}", SimplePlugin.getNamed()).replace("{label}", mainCommandLabel).split("\n"))
+					header.add(subline);
+			}
+
+			this.header = Common.toArray(header);
+		}
 	}
 
 	/**
@@ -1312,7 +1391,7 @@ public abstract class FileConfig {
 	 * @return
 	 */
 	public final String getFileName() {
-		return this.file == null ? "null" : this.file.getName();
+		return this.file == null ? "no file" : this.file.getName();
 	}
 
 	/**
@@ -1322,16 +1401,6 @@ public abstract class FileConfig {
 	 */
 	public final boolean isEmpty() {
 		return this.section.isEmpty();
-	}
-
-	/**
-	 * @deprecated unused, see {@link #saveToMap()}
-	 *
-	 * @return
-	 */
-	@Deprecated
-	public final SerializedMap serialize() {
-		throw new RuntimeException("serialize() is no longer used, override saveToMap() and use it manually instead. If you absolutely must use serialize, call getMap(\"\").serialize()");
 	}
 
 	// ------------------------------------------------------------------------------------
@@ -1402,6 +1471,10 @@ public abstract class FileConfig {
 
 			return this.genitivePlural;
 		}
+
+		public static AccusativeHelper of(String singular, String plural) {
+			return new AccusativeHelper(singular + ", " + plural);
+		}
 	}
 
 	/**
@@ -1416,27 +1489,27 @@ public abstract class FileConfig {
 			this.subtitle = Common.colorize(subtitle);
 		}
 
-		public void playLong(final Audience player) {
+		public void playLong(final Player player) {
 			this.playLong(player, null);
 		}
 
-		public void playLong(final Audience player, final Function<String, String> replacer) {
+		public void playLong(final Player player, final Function<String, String> replacer) {
 			this.play(player, 5, 4 * 20, 15, replacer);
 		}
 
-		public void playShort(final Audience player) {
+		public void playShort(final Player player) {
 			this.playShort(player, null);
 		}
 
-		public void playShort(final Audience player, final Function<String, String> replacer) {
+		public void playShort(final Player player, final Function<String, String> replacer) {
 			this.play(player, 3, 2 * 20, 5, replacer);
 		}
 
-		public void play(final Audience player, final int fadeIn, final int stay, final int fadeOut) {
+		public void play(final Player player, final int fadeIn, final int stay, final int fadeOut) {
 			this.play(player, fadeIn, stay, fadeOut, null);
 		}
 
-		public void play(final Audience player, final int fadeIn, final int stay, final int fadeOut, Function<String, String> replacer) {
+		public void play(final Player player, final int fadeIn, final int stay, final int fadeOut, Function<String, String> replacer) {
 			Remain.sendTitle(player, fadeIn, stay, fadeOut, replacer != null ? replacer.apply(this.title) : this.title, replacer != null ? replacer.apply(this.subtitle) : this.subtitle);
 		}
 	}

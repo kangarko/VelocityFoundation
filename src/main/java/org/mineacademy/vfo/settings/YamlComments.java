@@ -77,7 +77,7 @@ public final class YamlComments {
 
 		// ignoredSections can ONLY contain configurations sections
 		for (final String ignoredSection : ignoredSections)
-			if (newConfig.contains(ignoredSection))
+			if (newConfig.isSet(ignoredSection))
 				Valid.checkBoolean(newConfig.get(ignoredSection) instanceof Configuration, "Can only ignore config sections in " + jarPath + " (file " + diskFile + ")" + " not '" + ignoredSection + "' that is " + newConfig.get(ignoredSection));
 
 		// Save keys added to config that are not in default and would otherwise be lost
@@ -144,7 +144,7 @@ public final class YamlComments {
 				for (final String ignoredSection : ignoredSections) {
 					if (key.equals(ignoredSection))
 						// Write from new to old config
-						if ((!oldConfig.contains(ignoredSection) || oldConfig.getSection(ignoredSection).getKeys().isEmpty())) {
+						if ((!oldConfig.isSet(ignoredSection) || oldConfig.getConfigurationSection(ignoredSection).getKeys().isEmpty())) {
 							copyAllowed.add(ignoredSection);
 
 							break;
@@ -154,7 +154,7 @@ public final class YamlComments {
 						else {
 							write0(key, true, newConfig, oldConfig, comments, ignoredSections, writer, yaml);
 
-							for (final String oldKey : getDeepKeys(oldConfig.getSection(ignoredSection)))
+							for (final String oldKey : getDeepKeys(oldConfig.getConfigurationSection(ignoredSection)))
 								write0(ignoredSection + "." + oldKey, true, oldConfig, newConfig, comments, ignoredSections, writer, yaml);
 
 							reverseCopy.add(ignoredSection);

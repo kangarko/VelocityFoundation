@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import org.mineacademy.vfo.ChatUtil;
 import org.mineacademy.vfo.Common;
@@ -21,8 +20,6 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 
@@ -35,11 +32,6 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * Prevent oversized JSON from kicking players by removing interactive elements from it?
 	 */
 	public static boolean STRIP_OVERSIZED_COMPONENTS = true;
-
-	/**
-	 * The pattern to match URL addresses when parsing text
-	 */
-	private static final Pattern URL_PATTERN = Pattern.compile("^(?:(https?)://)?([-\\w_\\.]{2,}\\.[a-z]{2,4})(/\\S*)?$");
 
 	/**
 	 * The past components
@@ -473,8 +465,7 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param viewPermission
 	 * @return
 	 */
-	private static TextComponent[] toComponent(@NonNull String message, TextComponent inheritFormatting) {
-		final List<TextComponent> components = new ArrayList<>();
+	private static TextComponent toComponent(@NonNull String message, TextComponent inheritFormatting) {
 
 		// Plot the previous formatting manually before the message to retain it
 		if (inheritFormatting != null) {
@@ -497,124 +488,7 @@ public final class SimpleComponent implements ConfigSerializable {
 			message = Common.colorize(inheritFormatting.color().asHexString()) + message;
 		}
 
-		StringBuilder builder = new StringBuilder();
-		TextComponent component = Component.text("");
-
-		for (int index = 0; index < message.length(); index++) {
-			char letter = message.charAt(index);
-
-			if (letter == CompChatColor.COLOR_CHAR) {
-				if (++index >= message.length())
-					break;
-
-				letter = message.charAt(index);
-
-				if (letter >= 'A' && letter <= 'Z')
-					letter += 32;
-
-				CompChatColor format;
-
-				if (letter == 'x' && index + 12 < message.length()) {
-					final StringBuilder hex = new StringBuilder("#");
-
-					for (int j = 0; j < 6; j++)
-						hex.append(message.charAt(index + 2 + (j * 2)));
-
-					try {
-						format = CompChatColor.of(hex.toString());
-
-					} catch (NoSuchMethodError | IllegalArgumentException ex) {
-						format = null;
-					}
-
-					index += 12;
-
-				} else
-					format = CompChatColor.getByChar(letter);
-
-				if (format == null)
-					continue;
-
-				if (builder.length() > 0) {
-					final TextComponent old = component;
-
-					component = Component.textOfChildren(old);
-					old.content(builder.toString());
-
-					builder = new StringBuilder();
-					components.add(old);
-				}
-
-				if (format == CompChatColor.BOLD)
-					component.decorate(TextDecoration.BOLD);
-
-				else if (format == CompChatColor.ITALIC)
-					component.decorate(TextDecoration.ITALIC);
-
-				else if (format == CompChatColor.UNDERLINE)
-					component.decorate(TextDecoration.UNDERLINED);
-
-				else if (format == CompChatColor.STRIKETHROUGH)
-					component.decorate(TextDecoration.STRIKETHROUGH);
-
-				else if (format == CompChatColor.MAGIC)
-					component.decorate(TextDecoration.OBFUSCATED);
-
-				else if (format == CompChatColor.RESET) {
-					format = CompChatColor.WHITE;
-
-					component = Component.text("");
-					component.color(NamedTextColor.WHITE);
-
-				} else {
-					component = Component.text("");
-
-					component.color(format.isHex() ? TextColor.fromHexString(format.getName()) : NamedTextColor.NAMES.value(format.getName()));
-				}
-
-				continue;
-			}
-
-			int pos = message.indexOf(' ', index);
-
-			if (pos == -1)
-				pos = message.length();
-
-			// Web link handling
-			if (URL_PATTERN.matcher(message).region(index, pos).find()) {
-
-				if (builder.length() > 0) {
-					final TextComponent old = component;
-					component = Component.textOfChildren(old);
-
-					old.content(builder.toString());
-
-					builder = new StringBuilder();
-					components.add(old);
-				}
-
-				final TextComponent old = component;
-				component = Component.textOfChildren(old);
-
-				final String urlString = message.substring(index, pos);
-				component.content(urlString);
-				component.clickEvent(ClickEvent.openUrl(urlString.startsWith("http") ? urlString : "http://" + urlString));
-				components.add(component);
-
-				index += pos - index - 1;
-				component = old;
-
-				continue;
-			}
-
-			builder.append(letter);
-		}
-
-		component.content(builder.toString());
-		components.add(component);
-
-		return components.toArray(new TextComponent[components.size()]);
-
+		return LegacyComponentSerializer.legacySection().deserialize(message);
 	}
 
 	/**
@@ -758,20 +632,18 @@ public final class SimpleComponent implements ConfigSerializable {
 			if ((checkForReceiver && !this.canSendTo(receiver)) || this.isEmpty())
 				return null;
 
-			final TextComponent[] base = toComponent(this.text, this.inheritFormatting);
+			TextComponent part = toComponent(this.text, this.inheritFormatting);
 
-			for (final TextComponent part : base) {
-				if (this.hoverEvent != null)
-					part.hoverEvent(this.hoverEvent);
+			if (this.hoverEvent != null)
+				part = part.hoverEvent(this.hoverEvent);
 
-				if (this.clickEvent != null)
-					part.clickEvent(this.clickEvent);
+			if (this.clickEvent != null)
+				part = part.clickEvent(this.clickEvent);
 
-				if (this.insertion != null)
-					part.insertion(this.insertion);
-			}
+			if (this.insertion != null)
+				part = part.insertion(this.insertion);
 
-			return Component.textOfChildren(base);
+			return part;
 		}
 
 		/*

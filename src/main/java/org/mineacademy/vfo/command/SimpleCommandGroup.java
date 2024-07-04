@@ -535,7 +535,7 @@ public abstract class SimpleCommandGroup {
 					final int page = (this.args.length > 1 && Valid.isInteger(this.args[1]) ? Integer.parseInt(this.args[1]) : 1);
 
 					// Send the component on the main thread
-					Common.runAsync(() -> pages.send(this.sender, page));
+					pages.send(this.sender, page);
 
 				} else
 					this.tellError(SimpleLocalization.Commands.HEADER_NO_SUBCOMMANDS_PERMISSION);

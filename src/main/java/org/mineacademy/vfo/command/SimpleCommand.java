@@ -21,9 +21,8 @@ import org.mineacademy.vfo.collection.expiringmap.ExpiringMap;
 import org.mineacademy.vfo.command.SimpleCommandGroup.MainCommand;
 import org.mineacademy.vfo.debug.LagCatcher;
 import org.mineacademy.vfo.exception.CommandException;
-import org.mineacademy.vfo.exception.EventHandledException;
+import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.exception.InvalidCommandArgException;
-import org.mineacademy.vfo.model.ChatPaginator;
 import org.mineacademy.vfo.model.Replacer;
 import org.mineacademy.vfo.model.SimpleComponent;
 import org.mineacademy.vfo.model.SimpleTime;
@@ -284,16 +283,10 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 		this.args = invocation.arguments();
 
 		if (SimplePlugin.isReloading() || !SimplePlugin.getInstance().isEnabled()) {
-			Common.tell(sender, SimpleLocalization.Commands.USE_WHILE_NULL.replace("{state}", SimplePlugin.isReloading() ? SimpleLocalization.Commands.RELOADING : SimpleLocalization.Commands.DISABLED));
+			Common.tell(sender, SimpleLocalization.Commands.CANNOT_USE_WHILE_NULL.replace("{state}", SimplePlugin.isReloading() ? SimpleLocalization.Commands.RELOADING : SimpleLocalization.Commands.DISABLED));
 
 			return;
 		}
-
-		// Set tell prefix only if the parent setting was on
-		final String oldTellPrefix = Common.getTellPrefix();
-
-		if (this.tellPrefix != null)
-			Common.setTellPrefix(this.tellPrefix);
 
 		// Optional sublabel if this is a sub command
 		final String sublabel = this instanceof SimpleSubCommand ? " " + ((SimpleSubCommand) this).getSublabel() : "";
@@ -313,39 +306,30 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 
 			// Check for minimum required arguments and print help
 			if (args.length < this.getMinArguments() || this.autoHandleHelp && args.length == 1 && ("help".equals(args[0]) || "?".equals(args[0]))) {
+				final List<String> messages = new ArrayList<>();
 
-				Common.runAsync(() -> {
-					final String usage = this.getMultilineUsageMessage() != null ? String.join("\n&c", this.getMultilineUsageMessage()) : this.getUsage() != null ? this.getUsage() : null;
-					Valid.checkNotNull(usage, "getUsage() nor getMultilineUsageMessage() not implemented for '/" + this.getLabel() + sublabel + "' command!");
+				if (this.getDescription() != null) {
+					final String descriptionLabel = SimpleLocalization.Commands.LABEL_DESCRIPTION.trim();
 
-					final ChatPaginator paginator = new ChatPaginator(SimpleLocalization.Commands.HEADER_SECONDARY_COLOR);
-					final List<String> pages = new ArrayList<>();
+					messages.add(descriptionLabel.contains("{description}") ? descriptionLabel.replace("{description}", "&c" + this.getDescription()) : descriptionLabel + " &c" + this.getDescription());
+				}
 
-					if (!Common.getOrEmpty(this.getDescription()).isEmpty()) {
-						pages.add(this.replacePlaceholders(SimpleLocalization.Commands.LABEL_DESCRIPTION));
-						pages.add(this.replacePlaceholders("&c" + this.getDescription()));
-					}
+				if (this.getMultilineUsageMessage() != null) {
+					messages.add(SimpleLocalization.Commands.LABEL_USAGE);
 
-					if (this.getMultilineUsageMessage() != null) {
-						pages.add("");
-						pages.add(this.replacePlaceholders(SimpleLocalization.Commands.LABEL_USAGES));
+					for (final String usage : this.getMultilineUsageMessage())
+						messages.add("&c" + usage);
 
-						for (final String usagePart : usage.split("\n"))
-							pages.add(this.replacePlaceholders("&c" + usagePart));
+				} else if (this.getUsage() != null) {
+					final String usage = this.getUsage();
 
-					} else {
-						pages.add("");
-						pages.add(SimpleLocalization.Commands.LABEL_USAGE);
-						pages.add("&c" + this.replacePlaceholders("/" + this.getLabel() + sublabel + (!usage.startsWith("/") ? " " + Common.stripColors(usage) : "")));
-					}
+					messages.add("&c" + (usage.startsWith("/") ? usage : "/{label} " + (this instanceof SimpleSubCommand ? "{sublabel} " : "") + usage));
 
-					paginator
-							.setFoundationHeader(SimpleLocalization.Commands.LABEL_HELP_FOR.replace("{label}", this.getLabel() + sublabel))
-							.setPages(Common.toArray(pages));
+				} else
+					throw new FoException("Either getUsage() or getMultilineUsageMessage() must be implemented for '/" + this.getLabel() + sublabel + "' command!");
 
-					// Force sending on the main thread
-					Common.runAsync(() -> paginator.send(sender));
-				});
+				for (final String message : messages)
+					Common.tellNoPrefix(sender, this.replacePlaceholders(message));
 
 				return;
 			}
@@ -366,10 +350,6 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 					this.tellNoPrefix("&c" + line);
 			}
 
-		} catch (final EventHandledException ex) {
-			if (ex.getMessages() != null)
-				this.dynamicTellError(ex.getMessages());
-
 		} catch (final CommandException ex) {
 			if (ex.getMessages() != null)
 				this.dynamicTellError(ex.getMessages());
@@ -380,12 +360,12 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 			Common.error(t, "Failed to execute command /" + this.getLabel() + sublabel + " " + String.join(" ", args));
 
 		} finally {
-			Common.setTellPrefix(oldTellPrefix);
 
 			// Prevent duplication since MainCommand delegates this
 			if (!(this instanceof MainCommand))
 				LagCatcher.end(lagSection, 8, "{section} took {time} ms");
 		}
+
 	}
 
 	/*
@@ -1382,7 +1362,7 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	public final String getUsage() {
 		final String bukkitUsage = this.usage;
 
-		return bukkitUsage.equals("/" + this.getLabel()) ? "" : bukkitUsage;
+		return bukkitUsage == null || bukkitUsage.equals("/" + this.getLabel()) ? "" : bukkitUsage;
 	}
 
 	/**

@@ -32,7 +32,7 @@ public final class Configuration {
 			final String key = (entry.getKey() == null) ? "null" : entry.getKey().toString();
 
 			if (entry.getValue() instanceof Map) {
-				this.self.put(key, new Configuration((Map) entry.getValue(), (defaults == null) ? null : defaults.getSection(key)));
+				this.self.put(key, new Configuration((Map) entry.getValue(), (defaults == null) ? null : defaults.getConfigurationSection(key)));
 			} else {
 				this.self.put(key, entry.getValue());
 			}
@@ -48,7 +48,7 @@ public final class Configuration {
 		final String root = path.substring(0, index);
 		Object section = self.get(root);
 		if (section == null) {
-			section = new Configuration((defaults == null) ? null : defaults.getSection(root));
+			section = new Configuration((defaults == null) ? null : defaults.getConfigurationSection(root));
 			self.put(root, section);
 		}
 
@@ -78,7 +78,7 @@ public final class Configuration {
 		return (val != null) ? (T) val : def;
 	}
 
-	public boolean contains(String path) {
+	public boolean isSet(String path) {
 		return get(path, null) != null;
 	}
 
@@ -92,7 +92,7 @@ public final class Configuration {
 
 	public void set(String path, Object value) {
 		if (value instanceof Map) {
-			value = new Configuration((Map) value, (defaults == null) ? null : defaults.getSection(path));
+			value = new Configuration((Map) value, (defaults == null) ? null : defaults.getConfigurationSection(path));
 		}
 
 		final Configuration section = getSectionFor(path);
@@ -108,9 +108,9 @@ public final class Configuration {
 	}
 
 	/*------------------------------------------------------------------------*/
-	public Configuration getSection(String path) {
+	public Configuration getConfigurationSection(String path) {
 		final Object def = getDefault(path);
-		return (Configuration) get(path, (def instanceof Configuration) ? def : new Configuration((defaults == null) ? null : defaults.getSection(path)));
+		return (Configuration) get(path, (def instanceof Configuration) ? def : new Configuration((defaults == null) ? null : defaults.getConfigurationSection(path)));
 	}
 
 	/**

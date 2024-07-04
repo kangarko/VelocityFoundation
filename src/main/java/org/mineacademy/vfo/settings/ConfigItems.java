@@ -4,8 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -18,13 +19,12 @@ import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.StrictMap;
-import org.mineacademy.vfo.remain.Remain;
 
 import lombok.NonNull;
 
 /**
  * A special class that can store loaded {@link YamlConfig} files
- *
+ * <p>
  * DOES NOT INVOKE {@link YamlConfig#loadConfiguration(String, String)}
  * for you, you must invoke it by yourself as you otherwise normally would!
  *
@@ -50,30 +50,35 @@ public final class ConfigItems<T extends YamlConfig> {
 	private final String folder;
 
 	/**
-	 * The class we are loading in the list
-	 * <p>
-	 * *MUST* have a private constructor without any arguments
+	 * How we are going to instantiate a single class from file?
+	 *
+	 * This is for advanced use only, by default, each config item is the same class
+	 * for example in Boss plugin, each boss in bosses/ folder will make a Boss class.
+	 *
+	 * Examples where this can be useful: If you have a minigame plugin and want to store
+	 * different minigames in one folder such as MobArena and BedWars both in games/ folder,
+	 * then you will read the "Type" key in each arena file by opening the file name provided
+	 * in the function as config and returning the specific arena class from a key in that file.
 	 */
-	private final Class<T> prototypeClass;
+	private final Function<String, Class<T>> prototypeCreator;
 
 	/**
 	 * Are all items stored in a single file?
 	 */
-	private boolean singleFile = false;
+	private final boolean singleFile;
 
 	/**
 	 * Create a new config items instance
 	 *
 	 * @param type
 	 * @param folder
-	 * @param prototypeClass
-	 * @param hasDefaultPrototype
+	 * @param prototypeCreator
 	 * @param singleFile
 	 */
-	private ConfigItems(String type, String folder, Class<T> prototypeClass, boolean singleFile) {
+	private ConfigItems(String type, String folder, Function<String, Class<T>> prototypeCreator, boolean singleFile) {
 		this.type = type;
 		this.folder = folder;
-		this.prototypeClass = prototypeClass;
+		this.prototypeCreator = prototypeCreator;
 		this.singleFile = singleFile;
 	}
 
@@ -86,7 +91,19 @@ public final class ConfigItems<T extends YamlConfig> {
 	 * @return
 	 */
 	public static <P extends YamlConfig> ConfigItems<P> fromFolder(String folder, Class<P> prototypeClass) {
-		return new ConfigItems<>(folder.substring(0, folder.length() - (folder.endsWith("es") && !folder.contains("variable") ? 2 : folder.endsWith("s") ? 1 : 0)), folder, prototypeClass, false);
+		return fromFolder(folder, fileName -> prototypeClass);
+	}
+
+	/**
+	 * Load items from the given folder
+	 *
+	 * @param <P>
+	 * @param folder
+	 * @param prototypeCreator
+	 * @return
+	 */
+	public static <P extends YamlConfig> ConfigItems<P> fromFolder(String folder, Function<String, Class<P>> prototypeCreator) {
+		return new ConfigItems<>(folder.substring(0, folder.length() - (folder.endsWith("es") && !folder.contains("variable") ? 2 : folder.endsWith("s") ? 1 : 0)), folder, prototypeCreator, false);
 	}
 
 	/**
@@ -99,7 +116,20 @@ public final class ConfigItems<T extends YamlConfig> {
 	 * @return
 	 */
 	public static <P extends YamlConfig> ConfigItems<P> fromFile(String path, String file, Class<P> prototypeClass) {
-		return new ConfigItems<>(path, file, prototypeClass, true);
+		return fromFile(path, file, fileName -> prototypeClass);
+	}
+
+	/**
+	 * Load items from the given YAML file path
+	 *
+	 * @param <P>
+	 * @param path
+	 * @param file
+	 * @param prototypeCreator
+	 * @return
+	 */
+	public static <P extends YamlConfig> ConfigItems<P> fromFile(String path, String file, Function<String, Class<P>> prototypeCreator) {
+		return new ConfigItems<>(path, file, prototypeCreator, true);
 	}
 
 	/**
@@ -121,20 +151,21 @@ public final class ConfigItems<T extends YamlConfig> {
 
 		if (this.singleFile) {
 			final File file = FileUtil.extract(this.folder);
+			Configuration config;
 
 			try {
-				final Configuration config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
-
-				if (config.contains(this.type))
-					for (final String name : config.getSection(this.type).getKeys())
-						this.loadOrCreateItem(name);
+				config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
 
 			} catch (final IOException ex) {
-				Remain.sneaky(ex);
-			}
-		}
+				Common.throwError(ex, "Failed to load " + file);
 
-		else {
+				return;
+			}
+
+			if (config.isSet(this.type))
+				for (final String name : config.getConfigurationSection(this.type).getKeys())
+					this.loadOrCreateItem(name);
+		} else {
 			// Try copy items from our JAR
 			if (!FileUtil.getFile(this.folder).exists())
 				FileUtil.extractFolderFromJar(this.folder + "/", this.folder);
@@ -171,9 +202,8 @@ public final class ConfigItems<T extends YamlConfig> {
 	 *
 	 * @param name
 	 * @param instantiator by default we create new instances of your item by calling its constructor,
-	 * 		  which either can be a no args one or one taking a single argument, the name. If that is not
-	 * 		  sufficient, you can supply your custom instantiator here.
-	 *
+	 *                     which either can be a no args one or one taking a single argument, the name. If that is not
+	 *                     sufficient, you can supply your custom instantiator here.
 	 * @return
 	 */
 	public T loadOrCreateItem(@NonNull final String name, @Nullable Supplier<T> instantiator) {
@@ -191,15 +221,20 @@ public final class ConfigItems<T extends YamlConfig> {
 				Constructor<T> constructor;
 				boolean nameConstructor = true;
 
+				final Class<T> prototypeClass = this.prototypeCreator.apply(name);
+				Valid.checkNotNull(prototypeClass);
+
 				try {
-					constructor = this.prototypeClass.getDeclaredConstructor(String.class);
+					constructor = prototypeClass.getDeclaredConstructor(String.class);
 
 				} catch (final Exception e) {
-					constructor = this.prototypeClass.getDeclaredConstructor();
+					constructor = prototypeClass.getDeclaredConstructor();
 					nameConstructor = false;
 				}
 
-				Valid.checkBoolean(Modifier.isPrivate(constructor.getModifiers()), "Your class " + this.prototypeClass + " must have private constructor taking a String or nothing!");
+				Valid.checkBoolean(Modifier.isPrivate(constructor.getModifiers()) || Modifier.isProtected(constructor.getModifiers()),
+						"Your class " + prototypeClass + " must have a private or protected constructor taking a String or nothing!");
+
 				constructor.setAccessible(true);
 
 				try {
@@ -209,7 +244,7 @@ public final class ConfigItems<T extends YamlConfig> {
 						item = constructor.newInstance();
 
 				} catch (final InstantiationException ex) {
-					Common.throwError(ex, "Failed to create new" + (this.type == null ? this.prototypeClass.getSimpleName() : " " + this.type) + " " + name + " from " + constructor);
+					Common.throwError(ex, "Failed to create new" + (this.type == null ? prototypeClass.getSimpleName() : " " + this.type) + " " + name + " from " + constructor);
 				}
 			}
 
@@ -217,10 +252,10 @@ public final class ConfigItems<T extends YamlConfig> {
 			this.loadedItemsMap.put(name, item);
 
 		} catch (final Throwable t) {
-			Common.throwError(t, "Failed to load" + (this.type == null ? this.prototypeClass.getSimpleName() : " " + this.type) + " " + name + (this.singleFile ? "" : " from " + this.folder));
+			Common.throwError(t, "Failed to load" + name + (this.singleFile ? "" : " from " + this.folder));
 		}
 
-		Valid.checkNotNull(item, "Failed to initiliaze" + (this.type == null ? this.prototypeClass.getSimpleName() : " " + this.type) + " " + name + " from " + this.folder);
+		Valid.checkNotNull(item, "Failed to initiliaze " + name + " from " + this.folder);
 		return item;
 	}
 
@@ -230,8 +265,17 @@ public final class ConfigItems<T extends YamlConfig> {
 	 * @param item
 	 */
 	public void removeItem(@NonNull final T item) {
-		final String name = item.getName();
-		Valid.checkBoolean(this.isItemLoaded(name), ChatUtil.capitalize(this.type) + " " + name + " not loaded. Available: " + this.getItemNames());
+		this.removeItemByName(item.getName());
+	}
+
+	/**
+	 * Remove the given item by instance
+	 *
+	 * @param name
+	 */
+	public void removeItemByName(@NonNull final String name) {
+		final T item = this.findItem(name);
+		Valid.checkNotNull(item, ChatUtil.capitalize(this.type) + " " + name + " not loaded. Available: " + this.getItemNames());
 
 		if (this.singleFile)
 			item.save("", null);
@@ -274,8 +318,8 @@ public final class ConfigItems<T extends YamlConfig> {
 	 *
 	 * @return
 	 */
-	public Collection<T> getItems() {
-		return Collections.unmodifiableCollection(this.loadedItemsMap.values());
+	public List<T> getItems() {
+		return Collections.unmodifiableList(new ArrayList<>(this.loadedItemsMap.values()));
 	}
 
 	/**
