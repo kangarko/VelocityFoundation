@@ -85,7 +85,22 @@ final class ForwardingListener {
 					listener.setData(data);
 
 					Debugger.debug("bungee-all", "Channel " + subChannel + " received " + message.getAction() + " message from " + message.getServerName() + " server.");
-					listener.onMessageReceived(listener.getSender(), message);
+
+					try {
+						listener.onMessageReceived(listener.getSender(), message);
+
+					} catch (final Throwable t) {
+						Common.error(t,
+								Common.consoleLine(),
+								"ERROR COMMUNICATING WITH SPIGOT",
+								Common.consoleLine(),
+								"Ensure you are running latest version of",
+								"both proxy and Spigot plugins!",
+								"",
+								"Server: " + connection.getServerInfo().getName(),
+								"Error: " + t.getClass().getSimpleName() + ": " + t.getMessage());
+					}
+
 					handled = true;
 				}
 
