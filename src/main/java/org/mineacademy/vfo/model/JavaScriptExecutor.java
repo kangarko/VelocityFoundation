@@ -1,7 +1,5 @@
 package org.mineacademy.vfo.model;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import javax.script.ScriptContext;
@@ -15,9 +13,6 @@ import org.mineacademy.vfo.ReflectionUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.exception.EventHandledException;
 import org.mineacademy.vfo.plugin.SimplePlugin;
-import org.mineacademy.vfo.remain.Remain;
-
-import com.velocitypowered.api.proxy.Player;
 
 import lombok.NonNull;
 import net.kyori.adventure.audience.Audience;
@@ -62,27 +57,6 @@ public final class JavaScriptExecutor {
 		}
 
 		engine = scriptEngine;
-
-		if (engine == null) {
-			final List<String> warningMessage = Common.newList(
-					"ERROR: JavaScript placeholders will not function!",
-					"",
-					"Your Java version/distribution lacks the",
-					"Nashorn library for JavaScript placeholders.");
-
-			if (Remain.getJavaVersion() >= 15)
-				warningMessage.addAll(Arrays.asList(
-						"",
-						"To fix this, install the NashornPlus",
-						"plugin from mineacademy.org/nashorn"));
-			else
-				warningMessage.addAll(Arrays.asList(
-						"",
-						"To fix this, install Java 11 from Oracle",
-						"or other vendor that supports Nashorn."));
-
-			Common.logFramed(Common.toArray(warningMessage));
-		}
 	}
 
 	/**
@@ -118,8 +92,7 @@ public final class JavaScriptExecutor {
 	 */
 	public static Object run(@NonNull String javascript, final Audience sender, final Object event) {
 		if (engine == null) {
-			Common.warning("Not running script" + (sender instanceof Player ? " for " + ((Player) sender).getUsername() : "") + " because JavaScript library is missing "
-					+ "(install Oracle Java 8, 11 or 16 and download mineacademy.org/nashorn): " + javascript);
+			Common.warning("Ignoring JavaScript due to missing library. To fix this, compile nashorn-core as dependency to your jar. Ignoring code: '" + javascript + "'");
 
 			return null;
 		}
@@ -173,8 +146,7 @@ public final class JavaScriptExecutor {
 	public static Object run(final String javascript, final Map<String, Object> replacements) {
 
 		if (engine == null) {
-			Common.warning("Not running script because JavaScript library is missing "
-					+ "(install Oracle Java 8, 11 or 16 and download mineacademy.org/nashorn): " + javascript);
+			Common.warning("Ignoring JavaScript due to missing library. To fix this, compile nashorn-core as dependency to your jar. Ignoring code: '" + javascript + "'");
 
 			return javascript;
 		}
