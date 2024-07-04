@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.mineacademy.vfo.ChatUtil;
 import org.mineacademy.vfo.Common;
+import org.mineacademy.vfo.command.PermsCommand;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.CompChatColor;
 import org.mineacademy.vfo.settings.SimpleLocalization;

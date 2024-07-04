@@ -52,6 +52,7 @@ import org.mineacademy.vfo.remain.Remain;
 import org.slf4j.Logger;
 
 import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 

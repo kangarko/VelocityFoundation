@@ -265,17 +265,17 @@ public final class SerializeUtil {
 			/*final SerializedMap serialized = SerializedMap.of(object);
 			final HoverEvent.Action action = serialized.get("Action", HoverEvent.Action.class);
 			final BaseComponent[] value = serialized.get("Value", BaseComponent[].class);
-			
+
 			object = new HoverEvent(action, value);*/
 			throw new RuntimeException("Deserializing hover events is yet unsupported");
 		}
 
 		else if (classOf == ClickEvent.class) {
 			/*final SerializedMap serialized = SerializedMap.of(object);
-			
+
 			final ClickEvent.Action action = serialized.get("Action", ClickEvent.Action.class);
 			final String value = serialized.getString("Value");
-			
+
 			object = new ClickEvent(action, value);*/
 
 			throw new RuntimeException("Deserializing click events is yet unsupported");
