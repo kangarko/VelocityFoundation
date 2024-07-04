@@ -2223,15 +2223,6 @@ public final class Common {
 		}.runTaskTimerAsynchronously(SimplePlugin.getInstance(), delayTicks, repeatTicks);
 	}
 
-	/**
-	 * Convenience method for registering events as our instance
-	 *
-	 * @param listenerClass
-	 */
-	public static void registerEvents(final Object listenerClass) {
-		SimplePlugin.getServer().getEventManager().register(SimplePlugin.getInstance(), listenerClass);
-	}
-
 	// ------------------------------------------------------------------------------------------------------------
 	// Misc
 	// ------------------------------------------------------------------------------------------------------------
