@@ -844,16 +844,19 @@ public abstract class FileConfig {
 		}
 
 		// Load key-value pairs from config to our map
-		for (final Map.Entry<String, Object> entry : SerializedMap.of(this.section.retrieve(path))) {
-			final Key key = SerializeUtil.deserialize(keyType, entry.getKey());
-			final Value value = SerializeUtil.deserialize(valueType, entry.getValue(), valueDeserializeParams);
+		final Object savedKeys = this.section.retrieve(path);
 
-			// Ensure the pair values are valid for the given paramenters
-			this.checkAssignable(path, key, keyType);
-			this.checkAssignable(path, value, valueType);
+		if (savedKeys != null)
+			for (final Map.Entry<String, Object> entry : SerializedMap.of(this.section.retrieve(path))) {
+				final Key key = SerializeUtil.deserialize(keyType, entry.getKey());
+				final Value value = SerializeUtil.deserialize(valueType, entry.getValue(), valueDeserializeParams);
 
-			map.put(key, value);
-		}
+				// Ensure the pair values are valid for the given paramenters
+				this.checkAssignable(path, key, keyType);
+				this.checkAssignable(path, value, valueType);
+
+				map.put(key, value);
+			}
 
 		return map;
 	}
