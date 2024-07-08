@@ -64,7 +64,7 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	/**
 	 * The other command aliases
 	 */
-	private final String[] aliases;
+	private String[] aliases;
 
 	/**
 	 * Has this command been already registered?
@@ -1392,6 +1392,24 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	}
 
 	/**
+	 * Set aliases for this command
+	 *
+	 * @param aliases
+	 */
+	public final void setAliases(List<String> aliases) {
+		this.aliases = Common.toArray(aliases);
+	}
+
+	/**
+	 * Set aliases for this command
+	 *
+	 * @param aliases
+	 */
+	public final void setAliases(String[] aliases) {
+		this.aliases = aliases;
+	}
+
+	/**
 	 * Set whether we automatically show usage params in {@link #getMinArguments()}
 	 * and when the first arg == "help" or "?"
 	 * <p>
@@ -1486,7 +1504,7 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	}
 
 	@Override
-	public final String toString() {
+	public String toString() {
 		return "Command{label=/" + this.getLabel() + "}";
 	}
 

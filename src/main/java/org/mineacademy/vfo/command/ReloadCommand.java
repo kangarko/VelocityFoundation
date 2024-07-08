@@ -18,23 +18,12 @@ public final class ReloadCommand extends SimpleCommand {
 	/**
 	 * Create a new reload sub-command with the given permission.
 	 *
-	 * @param label
 	 * @param permission
 	 */
 	public ReloadCommand(String label, String permission) {
-		super(label, permission);
-
-		this.setDescription(Commands.RELOAD_DESCRIPTION);
-	}
-
-	/**
-	 * Create a new reload sub-command
-	 *
-	 * @param label
-	 */
-	public ReloadCommand(String label) {
 		super(label);
 
+		this.setPermission(permission);
 		this.setDescription(Commands.RELOAD_DESCRIPTION);
 	}
 
@@ -95,7 +84,7 @@ public final class ReloadCommand extends SimpleCommand {
 	}
 
 	/**
-	 * @see org.mineacademy.vfo.command.SimpleCommand#tabComplete()
+	 * @see org.mineacademy.fo.command.SimpleCommand#tabComplete()
 	 */
 	@Override
 	protected List<String> tabComplete() {

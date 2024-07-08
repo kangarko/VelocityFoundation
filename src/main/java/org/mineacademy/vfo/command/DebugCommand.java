@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
@@ -30,7 +28,7 @@ public final class DebugCommand extends SimpleSubCommand {
 	 * Set the custom debug lines you would like to add to the debug file
 	 */
 	@Setter
-	private static Consumer<List<String>> debugLines;
+	private static List<String> debugLines = new ArrayList<>();
 
 	/**
 	 * Create a new sub-command with the given permission.
@@ -79,16 +77,14 @@ public final class DebugCommand extends SimpleSubCommand {
 		final List<String> lines = Common.toList(Common.consoleLine(),
 				" Debug log generated " + TimeUtil.getFormattedDate(),
 				Common.consoleLine(),
-				"Plugin: " + SimplePlugin.getNamed() + " " + SimplePlugin.getVersion(),
+				"Plugin: " + SimplePlugin.getNamed(),
 				"Server Version: " + SimplePlugin.getServer().getVersion().getVersion(),
 				"Java: " + System.getProperty("java.version") + " (" + System.getProperty("java.specification.vendor") + "/" + System.getProperty("java.vm.vendor") + ")",
 				"OS: " + System.getProperty("os.name") + " " + System.getProperty("os.version"),
 				"Players Online: " + Remain.getOnlinePlayers().size(),
-				"Plugins: " + Common.join(SimplePlugin.getServer().getPluginManager().getPlugins(), ", ", plugin -> plugin.getDescription().getName().isPresent() ? plugin.getDescription().getName().get() : ""));
+				"Plugins: " + Common.join(SimplePlugin.getServer().getPluginManager().getPlugins(), ", ", plugin -> plugin.getDescription().getName().orElse("Unknown")));
 
-		if (debugLines != null)
-			debugLines.accept(lines);
-
+		lines.addAll(debugLines);
 		FileUtil.write("debug/general.txt", lines);
 	}
 
@@ -110,11 +106,11 @@ public final class DebugCommand extends SimpleSubCommand {
 					final YamlConfig config = YamlConfig.fromFile(file);
 					final YamlConfig copyConfig = YamlConfig.fromFile(copy);
 
-					for (final Map.Entry<String, Object> entry : config.getValues(true).entrySet()) {
-						final String key = entry.getKey();
+					for (final String key : config.getKeys(true)) {
+						final Object value = config.getObject(key);
 
 						if (!key.contains("MySQL"))
-							copyConfig.set(key, entry.getValue());
+							copyConfig.set(key, value);
 					}
 
 					copyConfig.save(copy);
@@ -165,10 +161,20 @@ public final class DebugCommand extends SimpleSubCommand {
 	}
 
 	/**
-	 * @see org.mineacademy.vfo.command.SimpleCommand#tabComplete()
+	 * @see org.mineacademy.fo.command.SimpleCommand#tabComplete()
 	 */
 	@Override
 	protected List<String> tabComplete() {
 		return NO_COMPLETE;
+	}
+
+	/**
+	 * Add custom debug lines to the general.txt file in the compressed ZIP file.
+	 *
+	 * @param lines
+	 */
+	public static void addDebugLines(String... lines) {
+		for (final String line : lines)
+			debugLines.add(line);
 	}
 }

@@ -64,7 +64,7 @@ public abstract class SimpleSubCommand extends SimpleCommand {
 		this.sublabel = this.sublabels[0];
 
 		// If the default perm was not changed, improve it
-		if (getDefaultPermission().equals(this.getRawPermission()))
+		if (this.getRawPermission().equals(getDefaultPermission()))
 			if (SimplePlugin.getInstance().getMainCommand() != null && SimplePlugin.getInstance().getMainCommand().getLabel().equals(this.getLabel()))
 				this.setPermission(this.getRawPermission().replace("{label}", "{sublabel}")); // simply replace label with sublabel
 
@@ -89,6 +89,11 @@ public abstract class SimpleSubCommand extends SimpleCommand {
 	@Override
 	protected String replacePlaceholders(String message) {
 		return super.replacePlaceholders(message).replace("{sublabel}", this.getSublabel());
+	}
+
+	@Override
+	public String toString() {
+		return "SubCommand{parent=/" + this.getLabel() + ", label=" + this.getSublabel() + "}";
 	}
 
 	@Override
