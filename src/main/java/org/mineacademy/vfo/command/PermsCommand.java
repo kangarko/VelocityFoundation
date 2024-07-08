@@ -171,7 +171,7 @@ public final class PermsCommand extends SimpleSubCommand {
 	}
 
 	/**
-	 * @see org.mineacademy.vfo.command.SimpleCommand#tabComplete()
+	 * @see org.mineacademy.fo.command.SimpleCommand#tabComplete()
 	 */
 	@Override
 	protected List<String> tabComplete() {
