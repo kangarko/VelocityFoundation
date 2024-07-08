@@ -1,5 +1,6 @@
 package org.mineacademy.vfo.remain;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,7 +33,8 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.kyori.adventure.title.TitlePart;
+import net.kyori.adventure.title.Title;
+import net.kyori.adventure.title.Title.Times;
 
 /**
  * Our main cross-version compatibility class.
@@ -343,8 +345,10 @@ public final class Remain {
 	 * @param subtitle the subtitle, will be colorized
 	 */
 	public static void sendTitle(final Audience player, final int fadeIn, final int stay, final int fadeOut, final String title, final String subtitle) {
-		player.sendTitlePart(TitlePart.TITLE, toComponentLegacy(Variables.replace(title, player)));
-		player.sendTitlePart(TitlePart.SUBTITLE, toComponentLegacy(Variables.replace(subtitle, player)));
+		player.showTitle(Title.title(
+				toComponentLegacy(Variables.replace(title, player)),
+				toComponentLegacy(Variables.replace(subtitle, player)),
+				Times.times(Duration.ofSeconds(fadeIn * 50), Duration.ofSeconds(stay * 50), Duration.ofMillis(fadeOut * 50))));
 	}
 
 	/**
