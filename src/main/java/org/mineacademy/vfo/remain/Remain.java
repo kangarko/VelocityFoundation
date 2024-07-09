@@ -121,7 +121,9 @@ public final class Remain {
 		final Collection<Player> players = new ArrayList<>();
 
 		for (final RegisteredServer serverInfo : getServers())
-			players.addAll(serverInfo.getPlayersConnected());
+			for (final Player player : serverInfo.getPlayersConnected())
+				if (player != null && !players.contains(player))
+					players.add(player);
 
 		return players;
 	}
