@@ -131,9 +131,9 @@ final class ForwardingListener {
 				info.ifPresent(serverInfo -> connection.getPlayer().createConnectionRequest(serverInfo).fireAndForget());
 
 			} else if (subChannel.equals("ConnectOther"))
-				this.proxy.getPlayer(in.readUTF()).ifPresent(player -> {
+				this.proxy.getPlayer(in.readUTF()).ifPresent(otherPlayer -> {
 					final Optional<RegisteredServer> info = this.proxy.getServer(in.readUTF());
-					info.ifPresent(serverInfo -> connection.getPlayer().createConnectionRequest(serverInfo).fireAndForget());
+					info.ifPresent(serverInfo -> otherPlayer.createConnectionRequest(serverInfo).fireAndForget());
 				});
 
 			else if (subChannel.equals("IP")) {
