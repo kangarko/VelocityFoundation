@@ -11,6 +11,7 @@ import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.exception.FoException;
+import org.mineacademy.vfo.model.ConfigSerializable;
 import org.mineacademy.vfo.plugin.SimplePlugin;
 import org.mineacademy.vfo.remain.Remain;
 import org.mineacademy.vfo.velocity.BungeeListener;
@@ -49,6 +50,15 @@ public final class OutgoingMessage extends Message {
 	 */
 	public OutgoingMessage(BungeeListener listener, BungeeMessageType action) {
 		super(listener, action);
+	}
+
+	/**
+	 * Write a compatible object into the message
+	 *
+	 * @param map
+	 */
+	public void write(ConfigSerializable map) {
+		this.write(map.serialize().toJson(), String.class);
 	}
 
 	/**
