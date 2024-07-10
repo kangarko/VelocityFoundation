@@ -19,6 +19,7 @@ import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.FileUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.StrictMap;
+import org.mineacademy.vfo.remain.Remain;
 
 import lombok.NonNull;
 
@@ -157,7 +158,7 @@ public final class ConfigItems<T extends YamlConfig> {
 				config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(file);
 
 			} catch (final IOException ex) {
-				Common.throwError(ex, "Failed to load " + file);
+				Remain.sneaky(ex);
 
 				return;
 			}
@@ -218,7 +219,7 @@ public final class ConfigItems<T extends YamlConfig> {
 				item = instantiator.get();
 
 			else {
-				Constructor<T> constructor;
+				Constructor<T> constructor = null;
 				boolean nameConstructor = true;
 
 				final Class<T> prototypeClass = this.prototypeCreator.apply(name);
@@ -227,13 +228,18 @@ public final class ConfigItems<T extends YamlConfig> {
 				try {
 					constructor = prototypeClass.getDeclaredConstructor(String.class);
 
-				} catch (final Exception e) {
-					constructor = prototypeClass.getDeclaredConstructor();
-					nameConstructor = false;
+				} catch (final Throwable t) {
+					try {
+						constructor = prototypeClass.getDeclaredConstructor();
+
+						nameConstructor = false;
+					} catch (final Throwable tt) {
+						// User forgot his constructor
+					}
 				}
 
-				Valid.checkBoolean(Modifier.isPrivate(constructor.getModifiers()) || Modifier.isProtected(constructor.getModifiers()),
-						"Your class " + prototypeClass + " must have a private or protected constructor taking a String or nothing!");
+				Valid.checkBoolean(constructor != null && (Modifier.isPrivate(constructor.getModifiers()) || Modifier.isProtected(constructor.getModifiers())),
+						"Your class " + prototypeClass + " must also have a private or a protected constructor taking a String or nothing! Found: " + constructor);
 
 				constructor.setAccessible(true);
 
