@@ -1,5 +1,6 @@
 package org.mineacademy.vfo.library;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
 
@@ -32,10 +33,22 @@ public class VelocityLibraryManager extends LibraryManager {
 	 * @param plugin        the plugin to manage
 	 */
 	public VelocityLibraryManager(Object plugin, Path dataDirectory, PluginManager pluginManager) {
-		super(dataDirectory.getParent().getParent().resolve("libraries"));
+		super(toRootServerPath(dataDirectory));
 
 		this.pluginManager = pluginManager;
 		this.plugin = plugin;
+	}
+
+	/*
+	 * Finds the root directory from the plugin's data directory
+	 */
+	private static Path toRootServerPath(Path dataDirectory) {
+		final File pluginsFolder = dataDirectory.toFile().getParentFile();
+
+		// For some reasons if we call getParentFile() on pluginsFolder above it will return null, so we have to manually get it from the last index of /
+		final File rootFolder = new File(pluginsFolder.getAbsolutePath().substring(0, pluginsFolder.getAbsolutePath().lastIndexOf(File.separatorChar)));
+
+		return new File(rootFolder, "libraries").toPath();
 	}
 
 	/**
