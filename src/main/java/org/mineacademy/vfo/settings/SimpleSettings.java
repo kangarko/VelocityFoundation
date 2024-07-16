@@ -2,12 +2,10 @@ package org.mineacademy.vfo.settings;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.List;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.StrictList;
-import org.mineacademy.vfo.constants.FoConstants;
 import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.debug.LagCatcher;
 import org.mineacademy.vfo.plugin.SimplePlugin;
@@ -45,7 +43,7 @@ public class SimpleSettings extends YamlStaticConfig {
 	 * @return
 	 */
 	protected String getSettingsFileName() {
-		return FoConstants.File.SETTINGS;
+		return "settings.yml";
 	}
 
 	/**
@@ -174,7 +172,6 @@ public class SimpleSettings extends YamlStaticConfig {
 		Valid.checkBoolean(!settingsClassCalled, "Settings class already loaded!");
 
 		setPathPrefix(null);
-		upgradeOldSettings();
 
 		if (isSetDefault("Date_Format"))
 			try {
@@ -237,38 +234,6 @@ public class SimpleSettings extends YamlStaticConfig {
 		}
 
 		settingsClassCalled = true;
-	}
-
-	/**
-	 * Upgrade some of the old and ancient settings from our premium plugins.
-	 */
-	private static void upgradeOldSettings() {
-
-		{ // Debug
-			if (isSet("Debugger"))
-				move("Debugger", "Debug");
-
-			if (isSet("Serialization_Number"))
-				move("Serialization_Number", "Serialization");
-
-			// ChatControl
-			if (isSet("Debugger.Keys")) {
-				move("Debugger.Keys", "Serialization");
-				move("Debugger.Sections", "Debug");
-			}
-
-			// Archaic
-			if (isSet("Debug") && !(getObject("Debug") instanceof List))
-				set("Debug", null);
-		}
-
-		{ // Prefix
-			if (isSet("Plugin_Prefix"))
-				move("Plugin_Prefix", "Prefix");
-
-			if (isSet("Check_Updates"))
-				move("Check_Updates", "Notify_Updates");
-		}
 	}
 
 	/**

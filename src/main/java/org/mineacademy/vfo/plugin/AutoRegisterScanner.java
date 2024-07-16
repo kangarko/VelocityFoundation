@@ -18,17 +18,16 @@ import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.annotation.AutoRegister;
 import org.mineacademy.vfo.command.SimpleCommand;
 import org.mineacademy.vfo.command.SimpleCommandGroup;
-import org.mineacademy.vfo.debug.Debugger;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.model.SimpleExpansion;
 import org.mineacademy.vfo.model.Tuple;
 import org.mineacademy.vfo.model.Variables;
+import org.mineacademy.vfo.proxy.ProxyListener;
 import org.mineacademy.vfo.remain.Remain;
 import org.mineacademy.vfo.settings.SimpleLocalization;
 import org.mineacademy.vfo.settings.SimpleSettings;
 import org.mineacademy.vfo.settings.YamlConfig;
 import org.mineacademy.vfo.settings.YamlStaticConfig;
-import org.mineacademy.vfo.velocity.BungeeListener;
 
 import com.velocitypowered.api.event.Subscribe;
 
@@ -38,9 +37,9 @@ import com.velocitypowered.api.event.Subscribe;
 final class AutoRegisterScanner {
 
 	/**
-	 * Prevents overriding {@link BungeeListener} in case of having multiple
+	 * Prevents overriding {@link ProxyListener} in case of having multiple
 	 */
-	private static boolean bungeeListenerRegistered = false;
+	private static boolean proxyListenerRegistered = false;
 
 	/**
 	 * Automatically register the main command group if there is only one in the code
@@ -56,7 +55,7 @@ final class AutoRegisterScanner {
 	public static void scanAndRegister() {
 
 		// Reset
-		bungeeListenerRegistered = false;
+		proxyListenerRegistered = false;
 		registeredCommandGroups.clear();
 
 		// Find all plugin classes that can be autoregistered
@@ -77,7 +76,7 @@ final class AutoRegisterScanner {
 
 				// Require our annotation to be used, or support legacy classes from Foundation 5
 				if (autoRegister != null
-						|| BungeeListener.class.isAssignableFrom(clazz)
+						|| ProxyListener.class.isAssignableFrom(clazz)
 						|| SimpleExpansion.class.isAssignableFrom(clazz)) {
 
 					Valid.checkBoolean(Modifier.isFinal(clazz.getModifiers()), "Please make " + clazz + " final for it to be registered automatically (or via @AutoRegister)");
@@ -208,13 +207,13 @@ final class AutoRegisterScanner {
 
 		boolean eventsRegistered = false;
 
-		if (BungeeListener.class.isAssignableFrom(clazz)) {
+		if (ProxyListener.class.isAssignableFrom(clazz)) {
 			enforceModeFor(clazz, mode, FindInstance.SINGLETON);
 
-			if (!bungeeListenerRegistered) {
-				bungeeListenerRegistered = true;
+			if (!proxyListenerRegistered) {
+				proxyListenerRegistered = true;
 
-				plugin.setBungeeCord((BungeeListener) instance);
+				plugin.setProxyListener((ProxyListener) instance);
 			}
 
 			eventsRegistered = true;
@@ -265,8 +264,6 @@ final class AutoRegisterScanner {
 			if (hasEvents)
 				plugin.registerEvents(instance);
 		}
-
-		Debugger.debug("auto-register", "Automatically registered " + clazz);
 	}
 
 	/*

@@ -2,19 +2,14 @@ package org.mineacademy.vfo.remain;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.ReflectionUtil;
 import org.mineacademy.vfo.ReflectionUtil.ReflectionException;
-import org.mineacademy.vfo.collection.SerializedMap;
 import org.mineacademy.vfo.exception.FoException;
 import org.mineacademy.vfo.model.Variables;
 import org.mineacademy.vfo.plugin.SimplePlugin;
@@ -23,16 +18,16 @@ import com.google.gson.Gson;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
+import lombok.NonNull;
 import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.bossbar.BossBar.Color;
 import net.kyori.adventure.bossbar.BossBar.Overlay;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.serializer.json.JSONComponentSerializer;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.title.Title.Times;
 
@@ -43,11 +38,6 @@ import net.kyori.adventure.title.Title.Times;
  * compatible with MC 1.8.8 up to the latest version.
  */
 public final class Remain {
-
-	/**
-	 * Pattern used to match encoded HEX colors &x&F&F&F&F&F&F
-	 */
-	private static final Pattern RGB_HEX_ENCODED_REGEX = Pattern.compile("(?i)(§x)((§[0-9A-F]){6})");
 
 	/**
 	 * The Google Json instance
@@ -177,33 +167,43 @@ public final class Remain {
 	}
 
 	/**
-	 * Converts chat message with color codes to Json chat components e.g. &6Hello
-	 * world converts to {text:"Hello world",color="gold"}
-	 * @param message
+	 * Converts a component to JSON
+	 *
+	 * @param component
 	 * @return
 	 */
-	public static String toJson(final String message) {
-		return toJson(JSONComponentSerializer.json().serialize(toComponentLegacy(message)));
+	public static String convertAdventureToJson(Component component) {
+		return GsonComponentSerializer.gson().serialize(component);
 	}
 
 	/**
-	 * Converts base components into json
+	 * Serializes the component into legacy text
 	 *
-	 * @param comps
+	 * @param component
 	 * @return
 	 */
-	public static String toJson(final Component comps) {
-		return JSONComponentSerializer.json().serialize(comps);
+	public static String convertAdventureToLegacy(Component component) {
+		return LegacyComponentSerializer.legacySection().serialize(component);
 	}
 
 	/**
-	 * Converts legacy text into an array of components
+	 * Serializes the component into plain text
 	 *
-	 * @param text
+	 * @param component
 	 * @return
 	 */
-	public static TextComponent toComponentLegacy(final String text) {
-		return LegacyComponentSerializer.legacySection().deserialize(Common.colorize(text));
+	public static String convertAdventureToPlain(Component component) {
+		return PlainTextComponentSerializer.plainText().serialize(component);
+	}
+
+	/**
+	 * Converts a json string to Adventure component
+	 *
+	 * @param json
+	 * @return
+	 */
+	public static Component convertJsonToAdventure(String json) {
+		return GsonComponentSerializer.gson().deserialize(json);
 	}
 
 	/**
@@ -211,98 +211,29 @@ public final class Remain {
 	 * @param componentJson
 	 * @return
 	 */
-	public static String toLegacyText(String componentJson) {
-		return toLegacyText(toComponent(componentJson));
+	public static String convertJsonToLegacy(String componentJson) {
+		return convertAdventureToLegacy(convertJsonToAdventure(componentJson));
 	}
 
 	/**
+	 * Creates a new adventure component from legacy text with {@link CompChatColor#COLOR_CHAR} colors replaced
 	 *
-	 * @param component
+	 * @param legacyText
 	 * @return
 	 */
-	public static String toLegacyText(Component component) {
-		return LegacyComponentSerializer.legacySection().serialize(component);
+	public static Component convertLegacyToAdventure(String legacyText) {
+		return LegacyComponentSerializer.legacySection().deserialize(legacyText);
 	}
 
 	/**
-	 * Converts json into base component array
+	 * Converts chat message with color codes to Json chat components e.g. &6Hello
+	 * world converts to {text:"Hello world",color="gold"}
 	 *
-	 * @param json
+	 * @param message
 	 * @return
 	 */
-	public static Component toComponent(final String json) {
-		try {
-			return JSONComponentSerializer.json().deserialize(json);
-
-		} catch (final Throwable t) {
-			Common.throwError(t,
-					"Failed to call toComponent!",
-					"Json: " + json,
-					"Error: %error%");
-
-			return null;
-		}
-	}
-
-	/**
-	 * Sends JSON component to sender
-	 *
-	 * @param sender
-	 * @param json
-	 * @param placeholders
-	 */
-	public static void sendJson(final Audience sender, final String json, final SerializedMap placeholders) {
-		try {
-			final Component component = toComponent(json);
-			replaceHexPlaceholders(Arrays.asList(component), placeholders);
-
-			sender.sendMessage(component);
-
-		} catch (final RuntimeException ex) {
-			Common.error(ex, "Malformed JSON when sending message to " + sender + " with JSON: " + json);
-		}
-	}
-
-	/*
-	 * A helper Method for MC 1.16+ to partially solve the issue of HEX colors in JSON
-	 *
-	 * BaseComponent does not support colors when in text, they must be set at the color level
-	 */
-	private static void replaceHexPlaceholders(final List<Component> components, final SerializedMap placeholders) {
-
-		for (final Component component : components) {
-			if (component instanceof TextComponent) {
-				final TextComponent textComponent = (TextComponent) component;
-				String text = textComponent.content();
-
-				for (final Map.Entry<String, Object> entry : placeholders.entrySet()) {
-					String key = entry.getKey();
-					String value = Common.simplify(entry.getValue());
-
-					// Detect HEX in placeholder
-					final Matcher match = RGB_HEX_ENCODED_REGEX.matcher(text);
-
-					while (match.find()) {
-
-						// Find the color
-						final String color = "#" + match.group(2).replace(CompChatColor.COLOR_CHAR + "", "");
-
-						// Remove it from chat and bind it to TextComponent instead
-						value = match.replaceAll("");
-						textComponent.color(TextColor.fromHexString(color));
-					}
-
-					key = key.charAt(0) != '{' ? "{" + key : key;
-					key = key.charAt(key.length() - 1) != '}' ? key + "}" : key;
-
-					text = text.replace(key, value);
-					textComponent.content(text);
-				}
-			}
-
-			if (component.children() != null)
-				replaceHexPlaceholders(component.children(), placeholders);
-		}
+	public static String convertLegacyToJson(final String message) {
+		return GsonComponentSerializer.gson().serialize(convertLegacyToAdventure(message));
 	}
 
 	/**
@@ -313,7 +244,7 @@ public final class Remain {
 	 */
 	public static void sendJson(final Audience sender, final String json) {
 		try {
-			sender.sendMessage(toComponent(json));
+			sender.sendMessage(convertJsonToAdventure(json));
 
 		} catch (final Throwable t) {
 
@@ -323,6 +254,30 @@ public final class Remain {
 
 			throw new RuntimeException("Malformed JSON when sending message to " + sender + " with JSON: " + json, t);
 		}
+	}
+
+	/**
+	 * Send the sender a component, ignoring it if it is empty
+	 *
+	 * @param sender
+	 * @param component
+	 */
+	public static void tell(Audience sender, Component component) {
+		tell(sender, component, true);
+	}
+
+	/**
+	 * Send the sender a component, ignoring it if it is empty
+	 *
+	 * @param sender
+	 * @param component
+	 * @param skipEmpty
+	 */
+	public static void tell(@NonNull Audience sender, Component component, boolean skipEmpty) {
+		if (Remain.convertAdventureToPlain(component).trim().isEmpty() && skipEmpty)
+			return;
+
+		sender.sendMessage(component);
 	}
 
 	/**
@@ -348,8 +303,8 @@ public final class Remain {
 	 */
 	public static void sendTitle(final Audience player, final int fadeIn, final int stay, final int fadeOut, final String title, final String subtitle) {
 		player.showTitle(Title.title(
-				toComponentLegacy(Variables.replace(title, player)),
-				toComponentLegacy(Variables.replace(subtitle, player)),
+				convertLegacyToAdventure(Variables.replace(title, player)),
+				convertLegacyToAdventure(Variables.replace(subtitle, player)),
 				Times.times(Duration.ofSeconds(fadeIn * 50), Duration.ofSeconds(stay * 50), Duration.ofMillis(fadeOut * 50))));
 	}
 
@@ -371,7 +326,7 @@ public final class Remain {
 	 * @param footer the footer
 	 */
 	public static void sendTablist(final Audience player, final String header, final String footer) {
-		player.sendPlayerListHeaderAndFooter(toComponentLegacy(Variables.replace(header, player)), toComponentLegacy(Variables.replace(footer, player)));
+		player.sendPlayerListHeaderAndFooter(convertLegacyToAdventure(Variables.replace(header, player)), convertLegacyToAdventure(Variables.replace(footer, player)));
 	}
 
 	/**
@@ -382,7 +337,7 @@ public final class Remain {
 	 * @param text   the text
 	 */
 	public static void sendActionBar(final Audience player, final String text) {
-		player.sendActionBar(toComponentLegacy(Variables.replace(text, player)));
+		player.sendActionBar(convertLegacyToAdventure(Variables.replace(text, player)));
 	}
 
 	/**
@@ -393,7 +348,7 @@ public final class Remain {
 	 * @param secondsToShow
 	 */
 	public static void sendBossbarTimed(Audience player, String message, int secondsToShow) {
-		final BossBar bar = BossBar.bossBar(toComponentLegacy(Variables.replace(message, player)), 1F, Color.WHITE, Overlay.PROGRESS);
+		final BossBar bar = BossBar.bossBar(convertLegacyToAdventure(Variables.replace(message, player)), 1F, Color.WHITE, Overlay.PROGRESS);
 		player.showBossBar(bar);
 
 		Common.runLaterAsync(secondsToShow * 20, (Runnable) () -> removeBossBar(player, bar));
@@ -425,7 +380,7 @@ public final class Remain {
 	 * @return
 	 */
 	public static BossBar sendBossbar(final Audience player, final String message, final float percent, final Color color, final Overlay style) {
-		final BossBar bar = BossBar.bossBar(toComponentLegacy(Variables.replace(message, player)), percent, color, style);
+		final BossBar bar = BossBar.bossBar(convertLegacyToAdventure(Variables.replace(message, player)), percent, color, style);
 		player.showBossBar(bar);
 
 		return bar;

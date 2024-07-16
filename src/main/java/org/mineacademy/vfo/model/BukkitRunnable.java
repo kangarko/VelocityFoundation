@@ -38,7 +38,7 @@ public abstract class BukkitRunnable implements Runnable {
 	 * @throws IllegalArgumentException if plugin is null
 	 * @throws IllegalStateException if this was already scheduled
 	 *
-	 * @deprecated all tasks on BungeeCord are run async
+	 * @deprecated all tasks on proxy are run async
 	 */
 	@Deprecated
 	@NonNull
@@ -73,7 +73,7 @@ public abstract class BukkitRunnable implements Runnable {
 	 * @throws IllegalArgumentException if plugin is null
 	 * @throws IllegalStateException if this was already scheduled
 	 *
-	 * @deprecated all tasks on BungeeCord are run async
+	 * @deprecated all tasks on proxy are run async
 	 */
 	@Deprecated
 	@NonNull
@@ -112,7 +112,7 @@ public abstract class BukkitRunnable implements Runnable {
 	 * @throws IllegalArgumentException if plugin is null
 	 * @throws IllegalStateException if this was already scheduled
 	 *
-	 * @deprecated all tasks on BungeeCord are run async
+	 * @deprecated all tasks on proxy are run async
 	 */
 	@Deprecated
 	@NonNull

@@ -1,5 +1,6 @@
 package org.mineacademy.vfo;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
@@ -21,6 +22,8 @@ import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 import javax.security.auth.login.Configuration;
 
@@ -1166,7 +1169,7 @@ public final class Common {
 				final String stripped = message.replaceFirst("\\[JSON\\]", "").trim();
 
 				if (!stripped.isEmpty())
-					log(Remain.toLegacyText(stripped));
+					log(Remain.convertJsonToLegacy(stripped));
 
 			} else
 				for (final String part : message.split("\n")) {
@@ -2221,6 +2224,71 @@ public final class Common {
 				task.run();
 			}
 		}.runTaskTimerAsynchronously(SimplePlugin.getInstance(), delayTicks, repeatTicks);
+	}
+
+	// ------------------------------------------------------------------------------------------------------------
+	// Compression
+	// ------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Compress the given string into a byte array
+	 *
+	 * @param data
+	 * @return
+	 */
+	public static byte[] compress(String data) {
+		try {
+			final byte[] input = data.getBytes("UTF-8");
+			final Deflater deflater = new Deflater();
+
+			deflater.setInput(input);
+			deflater.finish();
+
+			try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream(input.length)) {
+				final byte[] buffer = new byte[1024];
+
+				while (!deflater.finished()) {
+					final int count = deflater.deflate(buffer);
+
+					outputStream.write(buffer, 0, count);
+				}
+
+				return outputStream.toByteArray();
+			}
+
+		} catch (final Exception ex) {
+			Common.throwError(ex, "Failed to compress data");
+
+			return new byte[0];
+		}
+	}
+
+	/**
+	 * Decompress the given byte array into a string
+	 *
+	 * @param data
+	 * @return
+	 */
+	public static String decompress(byte[] data) {
+		final Inflater inflater = new Inflater();
+		inflater.setInput(data);
+
+		try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream(data.length)) {
+			final byte[] buffer = new byte[1024];
+
+			while (!inflater.finished()) {
+				final int count = inflater.inflate(buffer);
+
+				outputStream.write(buffer, 0, count);
+			}
+
+			return new String(outputStream.toByteArray(), "UTF-8");
+
+		} catch (final Exception ex) {
+			Common.throwError(ex, "Failed to decompress data");
+
+			return "";
+		}
 	}
 
 	// ------------------------------------------------------------------------------------------------------------

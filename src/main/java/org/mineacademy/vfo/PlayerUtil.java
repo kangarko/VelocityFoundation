@@ -28,7 +28,7 @@ public final class PlayerUtil {
 	 *
 	 */
 	public static void kick(final Player player, final String... messages) {
-		player.disconnect(Remain.toComponentLegacy(String.join("\n", messages)));
+		player.disconnect(Remain.convertLegacyToAdventure(Common.colorize(String.join("\n", messages))));
 	}
 
 	// ------------------------------------------------------------------------------------------------------------

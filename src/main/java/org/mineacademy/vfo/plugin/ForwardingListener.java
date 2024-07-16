@@ -8,11 +8,10 @@ import java.util.stream.Collectors;
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.PlayerUtil;
 import org.mineacademy.vfo.Valid;
-import org.mineacademy.vfo.debug.Debugger;
+import org.mineacademy.vfo.proxy.ProxyListener;
+import org.mineacademy.vfo.proxy.ProxyMessage;
+import org.mineacademy.vfo.proxy.message.IncomingMessage;
 import org.mineacademy.vfo.remain.Remain;
-import org.mineacademy.vfo.velocity.BungeeListener;
-import org.mineacademy.vfo.velocity.BungeeMessageType;
-import org.mineacademy.vfo.velocity.message.IncomingMessage;
 
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
@@ -45,7 +44,7 @@ final class ForwardingListener {
 	 */
 	@Subscribe
 	public void onPluginMessage(PluginMessageEvent event) {
-		synchronized (BungeeListener.DEFAULT_CHANNEL) {
+		synchronized (ProxyListener.DEFAULT_CHANNEL) {
 			final ChannelMessageSource sender = event.getSource();
 			final ChannelMessageSink receiver = event.getTarget();
 			final byte[] data = event.getData();
@@ -68,34 +67,32 @@ final class ForwardingListener {
 
 			boolean handled = false;
 
-			for (final BungeeListener listener : BungeeListener.getRegisteredListeners())
+			for (final ProxyListener listener : ProxyListener.getRegisteredListeners())
 				if (subChannel.equals(listener.getChannel())) {
 
 					final UUID senderUid = UUID.fromString(in.readUTF());
 					final String serverName = in.readUTF();
 					final String actionName = in.readUTF();
 
-					final BungeeMessageType action = BungeeMessageType.getByName(listener, actionName);
-					Valid.checkNotNull(action, "Unknown plugin action '" + actionName + "'. IF YOU UPDATED THE PLUGIN BY RELOADING, stop your entire network, ensure all servers were updated and start it again.");
+					final ProxyMessage message = ProxyMessage.getByName(listener, actionName);
+					Valid.checkNotNull(message, "Unknown bukkit message '" + actionName + "' sent to proxy. IF YOU UPDATED THE PLUGIN BY RELOADING, stop your entire network, update all servers and start again.");
 
-					final IncomingMessage message = new IncomingMessage(listener, senderUid, serverName, action, data, in, stream);
+					final IncomingMessage incomingMessage = new IncomingMessage(listener, senderUid, serverName, message, data, in, stream);
 
 					listener.setSender((ServerConnection) sender);
 					listener.setReceiver(receiver);
 					listener.setData(data);
 
-					Debugger.debug("bungee-all", "Channel " + subChannel + " received " + message.getAction() + " message from " + message.getServerName() + " server.");
-
 					try {
-						listener.onMessageReceived(listener.getSender(), message);
+						listener.onMessageReceived(listener.getSender(), incomingMessage);
 
 					} catch (final Throwable t) {
 						Common.error(t,
 								Common.consoleLine(),
-								"ERROR COMMUNICATING WITH SPIGOT",
+								"ERROR COMMUNICATING WITH BUKKIT",
 								Common.consoleLine(),
 								"Ensure you are running latest version of",
-								"both proxy and Spigot plugins!",
+								"both proxy and Bukkit plugins!",
 								"",
 								"Server: " + connection.getServerInfo().getName(),
 								"Error: " + t.getClass().getSimpleName() + ": " + t.getMessage());

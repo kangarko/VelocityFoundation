@@ -4,64 +4,50 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
+
+import javax.annotation.Nullable;
 
 import org.mineacademy.vfo.ChatUtil;
 import org.mineacademy.vfo.Common;
-import org.mineacademy.vfo.PlayerUtil;
-import org.mineacademy.vfo.SerializeUtil;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.collection.SerializedMap;
-import org.mineacademy.vfo.remain.CompChatColor;
+import org.mineacademy.vfo.exception.FoScriptException;
 import org.mineacademy.vfo.remain.Remain;
 
-import lombok.NonNull;
+import com.velocitypowered.api.permission.PermissionSubject;
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.event.HoverEventSource;
 
 /**
  * A very simple way of sending interactive chat messages
  */
+@NoArgsConstructor(access = lombok.AccessLevel.PRIVATE)
 public final class SimpleComponent implements ConfigSerializable {
 
 	/**
-	 * Prevent oversized JSON from kicking players by removing interactive elements from it?
+	 * The component we are creating
 	 */
-	public static boolean STRIP_OVERSIZED_COMPONENTS = true;
+	private final List<ConditionalComponent> components = new ArrayList<>();
 
 	/**
-	 * The past components
+	 * The optional sender of this component
 	 */
-	private final List<Part> pastComponents = new ArrayList<>();
+	@Nullable
+	private Audience sender;
 
 	/**
-	 * The current component being created
+	 * Shall this component ignore empty components? Defaults to false
 	 */
-	private Part currentComponent;
-
-	/**
-	 * Create a new interactive chat component
-	 *
-	 * @param text
-	 */
-	private SimpleComponent(String text) {
-
-		// Inject the center element here already
-		if (Common.stripColors(text).startsWith("<center>"))
-			text = ChatUtil.center(text.replace("<center>", "").trim());
-
-		this.currentComponent = new Part(text);
-	}
-
-	/**
-	 * Private constructor used when deserializing
-	 */
-	private SimpleComponent() {
-	}
+	@Getter
+	private boolean ignoreEmpty = false; // TODO test on false
 
 	// --------------------------------------------------------------------
 	// Events
@@ -70,11 +56,11 @@ public final class SimpleComponent implements ConfigSerializable {
 	/**
 	 * Add a show text event
 	 *
-	 * @param texts
+	 * @param lines
 	 * @return
 	 */
-	public SimpleComponent onHover(Collection<String> texts) {
-		return this.onHover(Common.toArray(texts));
+	public SimpleComponent onHover(final Collection<String> lines) {
+		return this.onHover(String.join("\n", lines));
 	}
 
 	/**
@@ -83,35 +69,30 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param lines
 	 * @return
 	 */
-	public SimpleComponent onHover(String... lines) {
-		// I don't know why we have to wrap this inside new text component but we do this
-		// to properly reset bold and other decoration colors
-		final String joined = Common.colorize(String.join("\n", lines));
-		this.currentComponent.hoverEvent = HoverEvent.showText(LegacyComponentSerializer.legacySection().deserialize(joined));
+	public SimpleComponent onHover(final String... lines) {
+		return this.onHover(String.join("\n", lines));
+	}
+
+	/**
+	 * Add a show text event
+	 *
+	 * @param hover
+	 * @return
+	 */
+	public SimpleComponent onHover(final String hover) {
+		this.modifyLastComponent(component -> component.hoverEvent(Remain.convertLegacyToAdventure(Common.colorize(hover))));
 
 		return this;
 	}
 
 	/**
-	 * Set view permission for last component part
+	 * Add a hover event
 	 *
-	 * @param viewPermission
+	 * @param hover
 	 * @return
 	 */
-	public SimpleComponent viewPermission(String viewPermission) {
-		this.currentComponent.viewPermission = viewPermission;
-
-		return this;
-	}
-
-	/**
-	 * Set view permission for last component part
-	 *
-	 * @param viewCondition
-	 * @return
-	 */
-	public SimpleComponent viewCondition(String viewCondition) {
-		this.currentComponent.viewCondition = viewCondition;
+	public SimpleComponent onHover(final HoverEventSource<?> hover) {
+		this.modifyLastComponent(component -> component.hoverEvent(hover));
 
 		return this;
 	}
@@ -122,8 +103,10 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param text
 	 * @return
 	 */
-	public SimpleComponent onClickRunCmd(String text) {
-		return this.onClick(ClickEvent.runCommand(text));
+	public SimpleComponent onClickRunCmd(final String text) {
+		this.modifyLastComponent(component -> component.clickEvent(ClickEvent.runCommand(text)));
+
+		return this;
 	}
 
 	/**
@@ -132,8 +115,10 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param text
 	 * @return
 	 */
-	public SimpleComponent onClickSuggestCmd(String text) {
-		return this.onClick(ClickEvent.suggestCommand(text));
+	public SimpleComponent onClickSuggestCmd(final String text) {
+		this.modifyLastComponent(component -> component.clickEvent(ClickEvent.suggestCommand(text)));
+
+		return this;
 	}
 
 	/**
@@ -142,30 +127,70 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param url
 	 * @return
 	 */
-	public SimpleComponent onClickOpenUrl(String url) {
-		return this.onClick(ClickEvent.openUrl(url));
-	}
-
-	/**
-	 * Add a command event
-	 *
-	 * @param event
-	 * @return
-	 */
-	public SimpleComponent onClick(ClickEvent event) {
-		this.currentComponent.clickEvent = event;
+	public SimpleComponent onClickOpenUrl(final String url) {
+		this.modifyLastComponent(component -> component.clickEvent(ClickEvent.openUrl(url)));
 
 		return this;
 	}
 
 	/**
-	 * Invoke insertion
+	 * Open the given URL
+	 *
+	 * @param url
+	 * @return
+	 */
+	public SimpleComponent onClickCopyToClipboard(final String url) {
+		this.modifyLastComponent(component -> component.clickEvent(ClickEvent.copyToClipboard(url)));
+
+		return this;
+	}
+
+	/**
+	 * Invoke Component setInsertion
 	 *
 	 * @param insertion
 	 * @return
 	 */
-	public SimpleComponent onClickInsert(String insertion) {
-		this.currentComponent.insertion = insertion;
+	public SimpleComponent onClickInsert(final String insertion) {
+		this.modifyLastComponent(component -> component.insertion(insertion));
+
+		return this;
+	}
+
+	/**
+	 * Set the view condition for this component
+	 *
+	 * @param viewCondition
+	 * @return
+	 */
+	public SimpleComponent viewCondition(final String viewCondition) {
+		this.getLastComponent().setViewCondition(viewCondition);
+
+		return this;
+	}
+
+	/**
+	 * Set the view permission for this component
+	 *
+	 * @param viewPermission
+	 * @return
+	 */
+	public SimpleComponent viewPermission(final String viewPermission) {
+		this.getLastComponent().setViewPermission(viewPermission);
+
+		return this;
+	}
+
+	/**
+	 * Quickly replaces an object in all parts of this component
+	 *
+	 * @param variable the factual variable - you must supply brackets
+	 * @param value
+	 * @return
+	 */
+	public SimpleComponent replace(final String variable, final String value) {
+		for (final ConditionalComponent part : this.components)
+			part.setComponent(part.getComponent().replaceText(b -> b.matchLiteral(variable).replacement(value)));
 
 		return this;
 	}
@@ -175,25 +200,12 @@ public final class SimpleComponent implements ConfigSerializable {
 	// --------------------------------------------------------------------
 
 	/**
-	 * Append new component at the beginning of all components
-	 *
-	 * @param component
-	 * @return
-	 */
-	public SimpleComponent appendFirst(SimpleComponent component) {
-		this.pastComponents.add(0, component.currentComponent);
-		this.pastComponents.addAll(0, component.pastComponents);
-
-		return this;
-	}
-
-	/**
 	 * Append text to this simple component
 	 *
 	 * @param text
 	 * @return
 	 */
-	public SimpleComponent append(String text) {
+	public SimpleComponent append(final String text) {
 		return this.append(text, true);
 	}
 
@@ -204,59 +216,19 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param colorize
 	 * @return
 	 */
-	public SimpleComponent append(String text, boolean colorize) {
-		return this.append(text, null, colorize);
+	public SimpleComponent append(final String text, final boolean colorize) {
+		return this.append(Remain.convertLegacyToAdventure(colorize ? Common.colorize(text) : text));
 	}
 
 	/**
-	 * Create another component. The current is put in a list of past components
-	 * so next time you use onClick or onHover, you will be added the event to the new one
-	 * specified here
+	 * Append a new simple component
 	 *
-	 * @param text
-	 * @param inheritFormatting
+	 * @param component
 	 * @return
 	 */
-	public SimpleComponent append(String text, TextComponent inheritFormatting) {
-		return this.append(text, inheritFormatting, true);
-	}
-
-	/**
-	 * Create another component. The current is put in a list of past components
-	 * so next time you use onClick or onHover, you will be added the event to the new one
-	 * specified here
-	 *
-	 * @param text
-	 * @param inheritFormatting
-	 * @param colorize
-	 * @return
-	 */
-	public SimpleComponent append(String text, TextComponent inheritFormatting, boolean colorize) {
-
-		// Get the last extra
-		TextComponent inherit = inheritFormatting != null ? inheritFormatting : this.currentComponent.toTextComponent(false, null);
-
-		if (inherit != null && !inherit.children().isEmpty())
-			inherit = (TextComponent) inherit.children().get(inherit.children().size() - 1);
-
-		// Center text for each line separately if replacing colors
-		if (colorize) {
-			final List<String> formatContents = Arrays.asList(text.split("\n"));
-
-			for (int i = 0; i < formatContents.size(); i++) {
-				final String line = formatContents.get(i);
-
-				if (Common.stripColors(line).startsWith("<center>"))
-					formatContents.set(i, ChatUtil.center(line.replace("<center>", "")));
-			}
-
-			text = String.join("\n", formatContents);
-		}
-
-		this.pastComponents.add(this.currentComponent);
-
-		this.currentComponent = new Part(colorize ? Common.colorize(text) : text);
-		this.currentComponent.inheritFormatting = inherit;
+	public SimpleComponent append(final SimpleComponent component) {
+		for (final ConditionalComponent part : component.components)
+			this.components.add(part);
 
 		return this;
 	}
@@ -267,18 +239,8 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param component
 	 * @return
 	 */
-	public SimpleComponent append(SimpleComponent component) {
-		this.pastComponents.add(this.currentComponent);
-		this.pastComponents.addAll(component.pastComponents);
-
-		// Get the last extra
-		TextComponent inherit = Common.getOrDefault(component.currentComponent.inheritFormatting, this.currentComponent.toTextComponent(false, null));
-
-		if (inherit != null && !inherit.children().isEmpty())
-			inherit = (TextComponent) inherit.children().get(inherit.children().size() - 1);
-
-		this.currentComponent = component.currentComponent;
-		this.currentComponent.inheritFormatting = inherit;
+	public SimpleComponent append(final Component component) {
+		this.components.add(ConditionalComponent.fromComponent(component));
 
 		return this;
 	}
@@ -289,63 +251,64 @@ public final class SimpleComponent implements ConfigSerializable {
 	 *
 	 * @return
 	 */
-	public String getPlainMessage() {
-		return Remain.toLegacyText(this.build(null));
+	public String getLegacyText() {
+		return Remain.convertAdventureToLegacy(this.build(null));
 	}
 
 	/**
-	 * Builds the component and its past components into a {@link TextComponent}
 	 *
 	 * @return
 	 */
-	public TextComponent getTextComponent() {
+	public String getJson() {
+		return Remain.convertAdventureToJson(this.build(null));
+	}
+
+	/**
+	 * Return the component
+	 *
+	 * @return
+	 */
+	public Component getComponent() {
 		return this.build(null);
 	}
 
 	/**
-	 * Builds the component and its past components into a {@link TextComponent}
+	 * Return the component
 	 *
 	 * @param receiver
 	 * @return
 	 */
-	public TextComponent build(Audience receiver) {
-		final List<Component> children = new ArrayList<>();
-
-		for (final Part part : this.pastComponents) {
-			final TextComponent component = part.toTextComponent(true, receiver);
-
-			if (component != null)
-				children.add(component);
-		}
-
-		final TextComponent currentComponent = this.currentComponent.toTextComponent(true, receiver);
-
-		if (currentComponent != null)
-			children.add(currentComponent);
-
-		return Component.textOfChildren(children.toArray(new Component[children.size()]));
+	public Component getComponent(Audience receiver) {
+		return this.build(receiver);
 	}
 
 	/**
-	 * Quickly replaces an object in all parts of this component
+	 * Return the component
 	 *
-	 * @param variable the factual variable - you must supply brackets
-	 * @param value
+	 * @param sender
+	 * @param receiver
 	 * @return
 	 */
-	public SimpleComponent replace(String variable, Object value) {
-		final String serialized = SerializeUtil.serialize(value).toString();
+	public Component getComponent(Audience sender, Audience receiver) {
+		this.setSender(sender);
 
-		for (final Part part : this.pastComponents) {
-			Valid.checkNotNull(part.text);
+		return this.build(receiver);
+	}
 
-			part.text = part.text.replace(variable, serialized);
+	/*
+	 * Convert into Adventure component
+	 */
+	private Component build(Audience receiver) {
+		Component main = Component.empty();
+
+		for (final ConditionalComponent part : this.components) {
+			final Component component = part.build(receiver);
+
+			if (component != null)
+				main = main.append(component);
 		}
 
-		Valid.checkNotNull(this.currentComponent.text);
-		this.currentComponent.text = this.currentComponent.text.replace(variable, serialized);
-
-		return this;
+		return main;
 	}
 
 	// --------------------------------------------------------------------
@@ -360,7 +323,7 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param receivers
 	 * @param <T>
 	 */
-	public <T extends Audience> void send(T... receivers) {
+	public <T extends Audience> void send(final T... receivers) {
 		this.send(Arrays.asList(receivers));
 	}
 
@@ -373,42 +336,59 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param <T>
 	 * @param receivers
 	 */
-	public <T extends Audience> void send(Iterable<T> receivers) {
-		this.sendAs(null, receivers);
+	public <T extends Audience> void send(final Iterable<T> receivers) {
+		for (final Audience receiver : receivers)
+			Remain.tell(receiver, this.build(receiver), this.ignoreEmpty);
 	}
 
 	/**
-	 * Attempts to send the complete {@link SimpleComponent} to the given
-	 * command senders. If they are players, we send them interactive elements.
-	 * <p>
-	 * If they are console, they receive a plain text message.
+	 * Set the sender of this component
 	 *
-	 * We will also replace relation placeholders if the sender is set and is player.
-	 *
-	 * @param <T>
 	 * @param sender
-	 * @param receivers
+	 * @return
 	 */
-	public <T extends Audience> void sendAs(Audience sender, Iterable<T> receivers) {
-		for (final Audience receiver : receivers) {
-			final TextComponent component = this.build(receiver);
+	public SimpleComponent setSender(final Audience sender) {
+		this.sender = sender;
 
-			// Prevent clients being kicked out, so we just send plain message instead
-			if (STRIP_OVERSIZED_COMPONENTS && Remain.toJson(component).length() + 1 >= Short.MAX_VALUE) {
-				final String legacy = Remain.toLegacyText(component);
+		return this;
+	}
 
-				if (legacy.length() + 1 >= Short.MAX_VALUE)
-					Common.warning("JSON Message to " + receiver + " was too large and could not be sent: '" + legacy + "'");
+	/**
+	 * Set if this component should ignore empty components? Defaults to false
+	 *
+	 * @param ignoreEmpty
+	 * @return
+	 */
+	public SimpleComponent setIgnoreEmpty(final boolean ignoreEmpty) {
+		this.ignoreEmpty = ignoreEmpty;
 
-				else {
-					Common.warning("JSON Message to " + receiver + " was too large, removing interactive elements to avoid kick. Sending plain: '" + legacy + "'");
+		return this;
+	}
 
-					receiver.sendMessage(Remain.toComponentLegacy(legacy));
-				}
+	/*
+	 * Get the last component or throws an error if none found
+	 */
+	private ConditionalComponent getLastComponent() {
+		Valid.checkBoolean(this.components.size() > 0, "No components found!");
 
-			} else
-				receiver.sendMessage(component);
-		}
+		return this.components.get(this.components.size() - 1);
+	}
+
+	/*
+	 * Helper method to modify the last component
+	 */
+	private void modifyLastComponent(Function<Component, Component> editor) {
+		final ConditionalComponent last = this.getLastComponent();
+
+		last.setComponent(editor.apply(last.getComponent()));
+	}
+
+	/**
+	 * @see org.mineacademy.vfo.model.ConfigSerializable#serialize()
+	 */
+	@Override
+	public SerializedMap serialize() {
+		return SerializedMap.of("Components", this.components);
 	}
 
 	/**
@@ -416,80 +396,12 @@ public final class SimpleComponent implements ConfigSerializable {
 	 */
 	@Override
 	public String toString() {
-		return this.serialize().toStringFormatted();
-	}
-
-	// --------------------------------------------------------------------
-	// Serialize
-	// --------------------------------------------------------------------
-
-	/**
-	 * @see org.mineacademy.vfo.model.ConfigSerializable#serialize()
-	 */
-	@Override
-	public SerializedMap serialize() {
-		final SerializedMap map = new SerializedMap();
-
-		map.putIf("Current_Component", this.currentComponent);
-		map.put("Past_Components", this.pastComponents);
-
-		return map;
-	}
-
-	/**
-	 * Create a {@link SimpleComponent} from the serialized map
-	 *
-	 * @param map
-	 * @return
-	 */
-	public static SimpleComponent deserialize(SerializedMap map) {
-		final SimpleComponent component = new SimpleComponent();
-
-		component.currentComponent = map.get("Current_Component", Part.class);
-		component.pastComponents.addAll(map.getList("Past_Components", Part.class));
-
-		return component;
+		return this.getJson();
 	}
 
 	// --------------------------------------------------------------------
 	// Static
 	// --------------------------------------------------------------------
-
-	/**
-	 * Compile the message into components, creating a new PermissibleComponent
-	 * each time the message has a new & color/formatting, preserving
-	 * the last color
-	 *
-	 * @param message
-	 * @param inheritFormatting
-	 * @param viewPermission
-	 * @return
-	 */
-	private static TextComponent toComponent(@NonNull String message, TextComponent inheritFormatting) {
-
-		// Plot the previous formatting manually before the message to retain it
-		if (inheritFormatting != null) {
-
-			if (inheritFormatting.hasDecoration(TextDecoration.BOLD))
-				message = CompChatColor.BOLD + message;
-
-			if (inheritFormatting.hasDecoration(TextDecoration.ITALIC))
-				message = CompChatColor.ITALIC + message;
-
-			if (inheritFormatting.hasDecoration(TextDecoration.OBFUSCATED))
-				message = CompChatColor.MAGIC + message;
-
-			if (inheritFormatting.hasDecoration(TextDecoration.STRIKETHROUGH))
-				message = CompChatColor.STRIKETHROUGH + message;
-
-			if (inheritFormatting.hasDecoration(TextDecoration.UNDERLINED))
-				message = CompChatColor.UNDERLINE + message;
-
-			message = Common.colorize(inheritFormatting.color().asHexString()) + message;
-		}
-
-		return LegacyComponentSerializer.legacySection().deserialize(message);
-	}
 
 	/**
 	 * Create a new interactive chat component
@@ -508,7 +420,7 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @param text
 	 * @return
 	 */
-	public static SimpleComponent of(String text) {
+	public static SimpleComponent of(final String text) {
 		return of(true, text);
 	}
 
@@ -521,169 +433,159 @@ public final class SimpleComponent implements ConfigSerializable {
 	 * @return
 	 */
 	public static SimpleComponent of(boolean colorize, String text) {
-		return new SimpleComponent(colorize ? Common.colorize(text) : text);
+		final SimpleComponent simpleComponent = new SimpleComponent();
+
+		// Inject the center element here already
+		if (text.contains("<center>"))
+			text = ChatUtil.center(text.replace("<center>", "").trim());
+
+		if (colorize)
+			text = Common.colorize(text);
+
+		simpleComponent.components.add(ConditionalComponent.fromLegacy(text));
+
+		return simpleComponent;
+	}
+
+	/**
+	 * Create a new interactive chat component
+	 *
+	 * @param component
+	 * @return
+	 */
+	public static SimpleComponent of(Component component) {
+		final SimpleComponent simpleComponent = new SimpleComponent();
+
+		simpleComponent.components.add(ConditionalComponent.fromComponent(component));
+
+		return simpleComponent;
+	}
+
+	/**
+	 *
+	 * @param json
+	 * @return
+	 */
+	public static SimpleComponent fromJson(String json) {
+		return deserialize(SerializedMap.fromJson(json));
+	}
+
+	/**
+	 *
+	 * @param map
+	 * @return
+	 */
+	public static SimpleComponent deserialize(SerializedMap map) {
+		final SimpleComponent component = new SimpleComponent();
+
+		component.components.addAll(map.getList("Components", ConditionalComponent.class));
+
+		return component;
 	}
 
 	// --------------------------------------------------------------------
 	// Classes
 	// --------------------------------------------------------------------
 
-	/**
-	 * The part that is being created
-	 */
-	static final class Part implements ConfigSerializable {
+	@Setter
+	@Getter
+	@NoArgsConstructor(access = AccessLevel.PRIVATE)
+	static final class ConditionalComponent implements ConfigSerializable {
 
-		/**
-		 * The text
-		 */
-		private String text;
-
-		/**
-		 * The view permission
-		 */
-
+		private Component component;
 		private String viewPermission;
-
-		/**
-		 * The view JS condition
-		 */
-
 		private String viewCondition;
 
-		/**
-		 * The hover event
-		 */
-		@SuppressWarnings("rawtypes")
-		private HoverEvent hoverEvent;
-
-		/**
-		 * The click event
-		 */
-
-		private ClickEvent clickEvent;
-
-		/**
-		 * The insertion
-		 */
-
-		private String insertion;
-
-		/**
-		 * What component to inherit colors/decoration from?
-		 */
-
-		private TextComponent inheritFormatting;
-
-		/*
-		 * Create a new part
-		 */
-		private Part(String text) {
-			Valid.checkNotNull(text, "Part text cannot be null");
-
-			this.text = text;
-		}
-
-		/**
-		 * @see org.mineacademy.vfo.model.ConfigSerializable#serialize()
-		 */
 		@Override
 		public SerializedMap serialize() {
 			final SerializedMap map = new SerializedMap();
 
-			map.put("Text", this.text);
-			map.putIf("View_Permission", this.viewPermission);
-			map.putIf("View_Condition", this.viewCondition);
-			map.putIf("Hover_Event", this.hoverEvent);
-			map.putIf("Click_Event", this.clickEvent);
-			map.putIf("Insertion", this.insertion);
-			map.putIf("Inherit_Formatting", this.inheritFormatting);
+			map.put("Component", this.component);
+			map.putIf("Permission", this.viewPermission);
+			map.putIf("Condition", this.viewCondition);
 
 			return map;
 		}
 
-		/**
-		 * Create a Part from the given serializedMap
-		 *
-		 * @param map
-		 * @return
-		 */
-		public static Part deserialize(SerializedMap map) {
-			final Part part = new Part(map.getString("Text"));
+		public static ConditionalComponent deserialize(final SerializedMap map) {
+			final ConditionalComponent part = new ConditionalComponent();
 
-			part.viewPermission = map.getString("View_Permission");
-			part.viewCondition = map.getString("View_Condition");
-			part.hoverEvent = map.get("Hover_Event", HoverEvent.class);
-			part.clickEvent = map.get("Click_Event", ClickEvent.class);
-			part.insertion = map.getString("Insertion");
-			part.inheritFormatting = map.get("Inherit_Formatting", TextComponent.class);
+			part.component = map.get("Component", Component.class);
+			part.viewPermission = map.getString("Permission");
+			part.viewCondition = map.getString("Condition");
 
 			return part;
 		}
 
-		/**
-		 * Turn this part of the components into a {@link TextComponent}
-		 * for the given receiver
-		 *
-		 * @param checkForReceiver
-		 * @param receiver
-		 * @return
+		/*
+		 * Build the component for the given receiver
 		 */
-		private TextComponent toTextComponent(boolean checkForReceiver, Audience receiver) {
-			if ((checkForReceiver && !this.canSendTo(receiver)) || this.isEmpty())
+		private Component build(@Nullable Audience receiver) {
+
+			if (this.viewPermission != null && !this.viewPermission.isEmpty() && (receiver == null || (receiver instanceof PermissionSubject && !((PermissionSubject) receiver).hasPermission(this.viewPermission))))
 				return null;
-
-			TextComponent part = toComponent(this.text, this.inheritFormatting);
-
-			if (this.hoverEvent != null)
-				part = part.hoverEvent(this.hoverEvent);
-
-			if (this.clickEvent != null)
-				part = part.clickEvent(this.clickEvent);
-
-			if (this.insertion != null)
-				part = part.insertion(this.insertion);
-
-			return part;
-		}
-
-		/*
-		 * Return if we're dealing with an empty format
-		 */
-		private boolean isEmpty() {
-			return this.text.isEmpty() && this.hoverEvent == null && this.clickEvent == null && this.insertion == null;
-		}
-
-		/*
-		 * Can this component be shown to the given sender?
-		 */
-		private boolean canSendTo(Audience receiver) {
-
-			if (this.viewPermission != null && !this.viewPermission.isEmpty() && (receiver == null || !PlayerUtil.hasPerm(receiver, this.viewPermission)))
-				return false;
 
 			if (this.viewCondition != null && !this.viewCondition.isEmpty()) {
 				if (receiver == null)
-					return false;
+					return null;
 
-				final Object result = JavaScriptExecutor.run(Variables.replace(this.viewCondition, receiver), receiver);
+				try {
+					final Object result = JavaScriptExecutor.run(Variables.replace(this.viewCondition, receiver), receiver);
 
-				if (result != null) {
-					Valid.checkBoolean(result instanceof Boolean, "View condition must return Boolean not " + (result == null ? "null" : result.getClass()) + " for component: " + this);
+					if (result != null) {
+						Valid.checkBoolean(result instanceof Boolean, "View condition must return Boolean not " + (result == null ? "null" : result.getClass()) + " for component: " + this);
 
-					if (!((boolean) result))
-						return false;
+						if (!((boolean) result))
+							return null;
+					}
+
+				} catch (final FoScriptException ex) {
+					Common.logFramed(
+							"Failed parsing view condition for component!",
+							"",
+							"The view condition must be a JavaScript code that returns a boolean!",
+							"Component: " + this,
+							"Line: " + ex.getErrorLine(),
+							"Error: " + ex.getMessage());
+
+					throw ex;
 				}
 			}
 
-			return true;
+			return this.component;
 		}
 
-		/**
-		 * @see java.lang.Object#toString()
-		 */
 		@Override
 		public String toString() {
 			return this.serialize().toStringFormatted();
+		}
+
+		/**
+		 * Create a new component from a legacy text
+		 *
+		 * @param text
+		 * @return
+		 */
+		static ConditionalComponent fromLegacy(String text) {
+			final ConditionalComponent part = new ConditionalComponent();
+
+			part.component = Remain.convertLegacyToAdventure(text);
+
+			return part;
+		}
+
+		/**
+		 * Create a new component from a component
+		 *
+		 * @param component
+		 * @return
+		 */
+		static ConditionalComponent fromComponent(Component component) {
+			final ConditionalComponent part = new ConditionalComponent();
+
+			part.component = component;
+
+			return part;
 		}
 	}
 }

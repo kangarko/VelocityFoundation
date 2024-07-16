@@ -32,7 +32,7 @@ public class VelocityLibraryManager extends LibraryManager {
 	 * @param plugin        the plugin to manage
 	 */
 	public VelocityLibraryManager(Object plugin, Path dataDirectory, PluginManager pluginManager) {
-		super(dataDirectory);
+		super(dataDirectory.getParent().getParent().resolve("libraries"));
 
 		this.pluginManager = pluginManager;
 		this.plugin = plugin;

@@ -297,7 +297,7 @@ public final class Variables {
 
 				// We do not support interact chat elements in format variables,
 				// so we just flatten the variable. Use formatting or chat variables instead.
-				String plain = component.getPlainMessage();
+				String plain = component.getLegacyText();
 
 				// And we remove the white prefix that is by default added in every component
 				if (plain.startsWith(CompChatColor.COLOR_CHAR + "f" + CompChatColor.COLOR_CHAR + "f"))

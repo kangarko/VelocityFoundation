@@ -1,4 +1,4 @@
-package org.mineacademy.vfo.velocity;
+package org.mineacademy.vfo.proxy;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -6,7 +6,7 @@ import java.util.Set;
 import org.mineacademy.vfo.Common;
 import org.mineacademy.vfo.Valid;
 import org.mineacademy.vfo.plugin.SimplePlugin;
-import org.mineacademy.vfo.velocity.message.IncomingMessage;
+import org.mineacademy.vfo.proxy.message.IncomingMessage;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
@@ -18,12 +18,10 @@ import lombok.Getter;
 import lombok.NonNull;
 
 /**
- * Represents a BungeeCord listener using a bungee channel
+ * Represents a proxy listener using a custom plugin message channel
  * on which you can listen to receiving messages
- *
- * This class is also a Listener for Bukkit events for your convenience
  */
-public abstract class BungeeListener {
+public abstract class ProxyListener {
 
 	/**
 	 * The default channel
@@ -31,10 +29,10 @@ public abstract class BungeeListener {
 	public static final ChannelIdentifier DEFAULT_CHANNEL = new LegacyChannelIdentifier("BungeeCord");
 
 	/**
-	 * Holds registered bungee listeners
+	 * Holds registered listeners
 	 */
 	@Getter
-	private static final Set<BungeeListener> registeredListeners = new HashSet<>();
+	private static final Set<ProxyListener> registeredListeners = new HashSet<>();
 
 	/**
 	 * The channel
@@ -46,7 +44,7 @@ public abstract class BungeeListener {
 	 * The actions
 	 */
 	@Getter
-	private final BungeeMessageType[] actions;
+	private final ProxyMessage[] actions;
 
 	/**
 	 * Temporary variable storing the senders connection
@@ -67,29 +65,29 @@ public abstract class BungeeListener {
 	private byte[] data;
 
 	/**
-	 * Create a new bungee suite with the given params
+	 * Create a new proxy listener with the given params
 	 *
 	 * @param channel
 	 * @param listener
 	 * @param actions
 	 */
-	protected BungeeListener(@NonNull String channel, Class<? extends BungeeMessageType> actionEnum) {
+	protected ProxyListener(@NonNull String channel, Class<? extends ProxyMessage> actionEnum) {
 		this.channel = channel;
 		this.actions = toActions(actionEnum);
 
-		for (final BungeeListener listener : registeredListeners)
+		for (final ProxyListener listener : registeredListeners)
 			if (listener.getChannel().equals(this.getChannel()))
 				return;
 
 		registeredListeners.add(this);
 	}
 
-	private static BungeeMessageType[] toActions(@NonNull Class<? extends BungeeMessageType> actionEnum) {
-		Valid.checkBoolean(actionEnum != BungeeMessageType.class, "When creating BungeeListener put your own class that extend BungeeMessageType there, not BungeeMessageType class itself!");
-		Valid.checkBoolean(actionEnum.isEnum(), "BungeeListener expects BungeeMessageType to be an enum, given: " + actionEnum);
+	private static ProxyMessage[] toActions(@NonNull Class<? extends ProxyMessage> actionEnum) {
+		Valid.checkBoolean(actionEnum != ProxyMessage.class, "When creating a new proxy listener put your own class that extend ProxyMessage there, not ProxyMessage class itself!");
+		Valid.checkBoolean(actionEnum.isEnum(), "Proxy listener expects ProxyMessage to be an enum, given: " + actionEnum);
 
 		try {
-			return (BungeeMessageType[]) actionEnum.getMethod("values").invoke(null);
+			return (ProxyMessage[]) actionEnum.getMethod("values").invoke(null);
 
 		} catch (final ReflectiveOperationException ex) {
 			Common.throwError(ex, "Unable to get values() of " + actionEnum + ", ensure it is an enum or has 'public static T[] values() method'!");
@@ -99,7 +97,7 @@ public abstract class BungeeListener {
 	}
 
 	/**
-	 * Called automatically when you receive a plugin message from Bungeecord,
+	 * Called automatically when you receive a plugin message from Bukkit,
 	 * see https://spigotmc.org/wiki/bukkit-bungee-plugin-messaging-channel
 	 *
 	 * @param sender
@@ -148,6 +146,6 @@ public abstract class BungeeListener {
 
 	@Override
 	public boolean equals(Object obj) {
-		return obj instanceof BungeeListener && ((BungeeListener) obj).getChannel().equals(this.getChannel());
+		return obj instanceof ProxyListener && ((ProxyListener) obj).getChannel().equals(this.getChannel());
 	}
 }
