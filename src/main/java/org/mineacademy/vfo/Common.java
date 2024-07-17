@@ -2115,17 +2115,61 @@ public final class Common {
 	}
 
 	/**
-	 * Return a new hashmap having the given first key and value pair
+	 * Return a new map with the given first key and value pair
 	 *
 	 * @param <A>
 	 * @param <B>
-	 * @param firstKey
-	 * @param firstValue
+	 * @param key
+	 * @param value
 	 * @return
 	 */
-	public static <A, B> Map<A, B> newHashMap(final A firstKey, final B firstValue) {
+	public static <A, B> Map<A, B> newHashMap(final A key, final B value) {
 		final Map<A, B> map = new HashMap<>();
-		map.put(firstKey, firstValue);
+
+		map.put(key, value);
+
+		return map;
+	}
+
+	/**
+	 * Return a new map with the given first key and value pair
+	 *
+	 * @param <A>
+	 * @param <B>
+	 * @param key
+	 * @param value
+	 * @param key2
+	 * @param value2
+	 * @return
+	 */
+	public static <A, B> Map<A, B> newHashMap(final A key, final B value, final A key2, final B value2) {
+		final Map<A, B> map = new HashMap<>();
+
+		map.put(key, value);
+		map.put(key2, value2);
+
+		return map;
+	}
+
+	/**
+	 * Return a new map with the given first key and value pair
+	 *
+	 * @param <A>
+	 * @param <B>
+	 * @param key
+	 * @param value
+	 * @param key2
+	 * @param value2
+	 * @param key3
+	 * @param value3
+	 * @return
+	 */
+	public static <A, B> Map<A, B> newHashMap(final A key, final B value, final A key2, final B value2, final A key3, final B value3) {
+		final Map<A, B> map = new HashMap<>();
+
+		map.put(key, value);
+		map.put(key2, value2);
+		map.put(key3, value3);
 
 		return map;
 	}
