@@ -9,6 +9,7 @@ import com.velocitypowered.api.proxy.Player;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
 
 /**
  * Utility class for managing players.
@@ -19,6 +20,17 @@ public final class PlayerUtil {
 	// ------------------------------------------------------------------------------------------------------------
 	// Misc
 	// ------------------------------------------------------------------------------------------------------------
+
+	/**
+	 * Kicks the player on the main thread with a colorized message
+	 *
+	 * @param player
+	 * @param messages
+	 *
+	 */
+	public static void kick(final Player player, final Component component) {
+		player.disconnect(component);
+	}
 
 	/**
 	 * Kicks the player on the main thread with a colorized message
