@@ -25,7 +25,6 @@ public final class PlayerUtil {
 	 * Kicks the player on the main thread with a colorized message
 	 *
 	 * @param player
-	 * @param messages
 	 *
 	 */
 	public static void kick(final Player player, final Component component) {

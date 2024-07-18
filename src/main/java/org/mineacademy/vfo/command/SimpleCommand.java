@@ -38,6 +38,7 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import lombok.Getter;
 import lombok.NonNull;
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
 
 /**
  * A simple command used to replace all Bukkit/Spigot command functionality
@@ -351,8 +352,8 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 			}
 
 		} catch (final CommandException ex) {
-			if (ex.getMessages() != null)
-				this.dynamicTellError(ex.getMessages());
+			if (ex.getComponent() != null)
+				this.dynamicTellError(ex.getComponent());
 
 		} catch (final Throwable t) {
 			this.dynamicTellError(SimpleLocalization.Commands.ERROR.replace("{error}", t.toString()));
@@ -378,6 +379,17 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 				this.tellError(message);
 		else
 			this.tell(messages);
+	}
+
+	/*
+	 * If messenger is on, we send the message prefixed with Messenger.getErrorPrefix()
+	 * otherwise we just send a normal message
+	 */
+	private void dynamicTellError(final Component component) {
+		if (Messenger.ENABLED)
+			this.tellError(component);
+		else
+			this.tell(component);
 	}
 
 	/**
@@ -480,6 +492,18 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	protected final void checkBoolean(final boolean value, final String falseMessage) throws CommandException {
 		if (!value)
 			this.returnTell((Messenger.ENABLED ? "" : "&c") + falseMessage);
+	}
+
+	/**
+	 * Checks if the given boolean is true
+	 *
+	 * @param value
+	 * @param falseMessage
+	 * @throws CommandException
+	 */
+	protected final void checkBoolean(final boolean value, final Component falseMessage) throws CommandException {
+		if (!value)
+			this.returnTell(Remain.convertLegacyToAdventure(Messenger.ENABLED ? "" : "&c").append(falseMessage));
 	}
 
 	/**
@@ -803,6 +827,31 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	}
 
 	/**
+	 * Sends a multiline message to the player, avoiding prefix if 3 lines or more
+	 *
+	 * @param component
+	 */
+	protected final void tell(Component component) {
+
+		if (component == null)
+			return;
+
+		final String oldTellPrefix = Common.getTellPrefix();
+
+		if (this.tellPrefix != null)
+			Common.setTellPrefix(this.tellPrefix);
+
+		try {
+			final String legacy = this.replacePlaceholders(Remain.convertAdventureToLegacy(component));
+
+			Common.tell(this.sender, legacy);
+
+		} finally {
+			Common.setTellPrefix(oldTellPrefix);
+		}
+	}
+
+	/**
 	 * Send a list of messages to the player
 	 *
 	 * @param messages
@@ -882,11 +931,37 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	 *
 	 * @param message
 	 */
+	protected final void tellSuccess(Component message) {
+		if (message != null) {
+			final String legacy = this.replacePlaceholders(Remain.convertAdventureToLegacy(message));
+
+			Messenger.success(this.sender, legacy);
+		}
+	}
+
+	/**
+	 * Sends a no prefix message to the player
+	 *
+	 * @param message
+	 */
 	protected final void tellInfo(String message) {
 		if (message != null) {
 			message = this.replacePlaceholders(message);
 
 			Messenger.info(this.sender, message);
+		}
+	}
+
+	/**
+	 * Sends a no prefix message to the player
+	 *
+	 * @param message
+	 */
+	protected final void tellInfo(Component message) {
+		if (message != null) {
+			final String legacy = this.replacePlaceholders(Remain.convertAdventureToLegacy(message));
+
+			Messenger.info(this.sender, legacy);
 		}
 	}
 
@@ -913,6 +988,19 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 			message = this.replacePlaceholders(message);
 
 			Messenger.error(this.sender, message);
+		}
+	}
+
+	/**
+	 * Sends a no prefix message to the player
+	 *
+	 * @param component
+	 */
+	protected final void tellError(Component component) {
+		if (component != null) {
+			component = Remain.convertLegacyToAdventure(this.replacePlaceholders(Remain.convertAdventureToLegacy(component)));
+
+			Messenger.error(this.sender, component);
 		}
 	}
 
@@ -957,6 +1045,16 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 	 */
 	protected final void returnTell(final String... messages) throws CommandException {
 		throw new CommandException(this.replacePlaceholders(messages));
+	}
+
+	/**
+	 * Sends a message to the player and throws a message error, preventing further execution
+	 *
+	 * @param message
+	 * @throws CommandException
+	 */
+	protected final void returnTell(final Component message) throws CommandException {
+		throw new CommandException(this.replacePlaceholders(Remain.convertAdventureToLegacy(message)));
 	}
 
 	/**
@@ -1479,12 +1577,11 @@ public abstract class SimpleCommand implements com.velocitypowered.api.command.S
 			runnable.run();
 
 		} catch (final CommandException ex) {
-			if (ex.getMessages() != null)
-				for (final String message : ex.getMessages())
-					if (Messenger.ENABLED)
-						Messenger.error(this.sender, message);
-					else
-						Common.tell(this.sender, message);
+			if (ex.getComponent() != null)
+				if (Messenger.ENABLED)
+					Messenger.error(this.sender, ex.getComponent());
+				else
+					Common.tell(this.sender, Remain.convertAdventureToLegacy(ex.getComponent()));
 
 		} catch (final Throwable t) {
 			final String errorMessage = SimpleLocalization.Commands.ERROR.replace("{error}", t.toString());

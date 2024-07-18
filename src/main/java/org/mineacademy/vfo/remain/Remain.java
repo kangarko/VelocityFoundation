@@ -341,6 +341,17 @@ public final class Remain {
 	}
 
 	/**
+	 * Displays message above player's health and hunger bar. (1.8+) Text will be
+	 * colorized.
+	 *
+	 * @param player the player
+	 * @param text   the text
+	 */
+	public static void sendActionBar(final Audience player, final Component text) {
+		player.sendActionBar(convertLegacyToAdventure(Variables.replace(convertAdventureToLegacy(text), player)));
+	}
+
+	/**
 	 * Shows a boss bar that is then hidden after the given period
 	 *
 	 * @param player
@@ -349,6 +360,20 @@ public final class Remain {
 	 */
 	public static void sendBossbarTimed(Audience player, String message, int secondsToShow) {
 		final BossBar bar = BossBar.bossBar(convertLegacyToAdventure(Variables.replace(message, player)), 1F, Color.WHITE, Overlay.PROGRESS);
+		player.showBossBar(bar);
+
+		Common.runLaterAsync(secondsToShow * 20, (Runnable) () -> removeBossBar(player, bar));
+	}
+
+	/**
+	 * Shows a boss bar that is then hidden after the given period
+	 *
+	 * @param player
+	 * @param message
+	 * @param secondsToShow
+	 */
+	public static void sendBossbarTimed(Audience player, Component message, int secondsToShow) {
+		final BossBar bar = BossBar.bossBar(convertLegacyToAdventure(Variables.replace(convertAdventureToLegacy(message), player)), 1F, Color.WHITE, Overlay.PROGRESS);
 		player.showBossBar(bar);
 
 		Common.runLaterAsync(secondsToShow * 20, (Runnable) () -> removeBossBar(player, bar));

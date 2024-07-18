@@ -445,6 +445,66 @@ public final class Common {
 	}
 
 	/**
+	 * Sends a message to the audience. Supports {prefix} and {player} variable.
+	 * Supports \<actionbar\>, \<toast\>, \<title\>, \<bossbar\> and \<center\>.
+	 * Properly sends the message to the player if he is conversing with the server.
+	 *
+	 * @param audience
+	 * @param message
+	 */
+	public static void tell(@NonNull final Audience audience, Component message) {
+		if (message == null)
+			return;
+
+		final String plainMessage = Remain.convertAdventureToPlain(message);
+
+		if (plainMessage.isEmpty() || "none".equals(plainMessage))
+			return;
+
+		final boolean hasPrefix = plainMessage.contains("{prefix}");
+
+		// Replace some variables
+		message = message.replaceText(b -> b.matchLiteral("{player}").replacement(Remain.convertLegacyToAdventure(resolveSenderName(audience))));
+		message = message.replaceText(b -> b.matchLiteral("{prefix}").replacement(Remain.convertLegacyToAdventure(SimpleSettings.PLUGIN_PREFIX)));
+
+		if (plainMessage.startsWith("<actionbar>")) {
+			final String stripped = plainMessage.replace("<actionbar>", "").trim();
+
+			if (!stripped.isEmpty())
+				Remain.sendActionBar(audience, message.replaceText(b -> b.matchLiteral("<actionbar>").replacement("")));
+
+		} else if (plainMessage.startsWith("<title>")) {
+			final String stripped = Remain.convertAdventureToLegacy(message).replace("<title>", "").trim();
+
+			if (!stripped.isEmpty()) {
+				final String[] split = stripped.split("\\|");
+				final String title = split[0];
+				final String subtitle = split.length > 1 ? Common.joinRange(1, split) : null;
+
+				Remain.sendTitle(audience, 0, 60, 0, title, subtitle);
+			}
+
+		} else if (plainMessage.startsWith("<bossbar>")) {
+			final String stripped = plainMessage.replace("<bossbar>", "").trim();
+
+			if (!stripped.isEmpty())
+				Remain.sendBossbarTimed(audience, message.replaceText(b -> b.matchLiteral("<bossbar>").replacement("")), 10);
+
+		} else {
+			final String prefix = !hasPrefix && !tellPrefix.isEmpty() ? tellPrefix + " " : "";
+			String legacyMessage = prefix + Remain.convertAdventureToLegacy(message);
+
+			if (plainMessage.startsWith("<center>")) {
+				legacyMessage = ChatUtil.center(legacyMessage.replace("\\<center\\>(\\s|)", ""));
+
+				audience.sendMessage(Remain.convertLegacyToAdventure(legacyMessage));
+
+			} else
+				audience.sendMessage(Remain.convertLegacyToAdventure(legacyMessage));
+		}
+	}
+
+	/**
 	 * Return the sender's name if it's a player or discord sender, or simply {@link SimpleLocalization#CONSOLE_NAME} if it is a console
 	 *
 	 * @param sender
@@ -516,7 +576,7 @@ public final class Common {
 	/**
 	 * Replace the & letter with the {@link CompChatColor#COLOR_CHAR} in the message.
 	 * <p>
-	 * Also replaces {prefix} with {@link #getTellPrefix()} and {server} with {@link SimpleLocalization#SERVER_PREFIX}
+	 * Also replaces {prefix} with {@link #getTellPrefix()}
 	 *
 	 * @param message the message to replace color codes with '&'
 	 * @return the colored message
@@ -527,7 +587,6 @@ public final class Common {
 
 		String result = CompChatColor.translateColorCodes(message)
 				.replace("{prefix}", message.startsWith(tellPrefix) ? "" : removeSurroundingSpaces(tellPrefix.trim()))
-				.replace("{server}", SimpleLocalization.SERVER_PREFIX)
 				.replace("{plugin_name}", SimplePlugin.getNamed())
 				.replace("{plugin_version}", SimplePlugin.getVersion());
 
