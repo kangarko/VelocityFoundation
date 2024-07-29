@@ -46,7 +46,7 @@ VelocityFoundation is a library for fast development of Velocity plugins.
 <dependency>
 	<groupId>org.projectlombok</groupId>
 	<artifactId>lombok</artifactId>
-	<version>1.18.32</version>
+	<version>1.18.34</version>
 	<scope>provided</scope>
 </dependency>
  ```
