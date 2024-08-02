@@ -316,6 +316,8 @@ public abstract class SimplePlugin {
 			final String oldLogPrefix = Common.getLogPrefix();
 			Common.setLogPrefix("");
 
+			this.onPluginPreStart();
+
 			try {
 				AutoRegisterScanner.scanAndRegister();
 
@@ -408,6 +410,12 @@ public abstract class SimplePlugin {
 	 * Called before the plugin is started, see {@link JavaPlugin#onLoad()}
 	 */
 	protected void onPluginLoad() {
+	}
+
+	/**
+	 * Called before auto register and settings are loaded
+	 */
+	protected void onPluginPreStart() {
 	}
 
 	/**
