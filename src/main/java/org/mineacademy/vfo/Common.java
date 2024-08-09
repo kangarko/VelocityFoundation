@@ -491,7 +491,7 @@ public final class Common {
 				Remain.sendBossbarTimed(audience, message.replaceText(b -> b.matchLiteral("<bossbar>").replacement("")), 10);
 
 		} else {
-			final String prefix = !hasPrefix && !tellPrefix.isEmpty() ? tellPrefix + " " : "";
+			final String prefix = !hasPrefix && !tellPrefix.isEmpty() ? tellPrefix + (tellPrefix.endsWith(" ") ? "" : " ") : "";
 			String legacyMessage = prefix + Remain.convertAdventureToLegacy(message);
 
 			if (plainMessage.startsWith("<center>")) {
