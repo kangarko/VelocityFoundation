@@ -57,7 +57,7 @@ VelocityFoundation is a library for fast development of Velocity plugins.
 <plugin>
   <groupId>org.apache.maven.plugins</groupId>
   <artifactId>maven-shade-plugin</artifactId>
-  <version>3.5.1</version>
+  <version>3.6.0</version>
   <executions>
     <execution>
       <phase>package</phase>
