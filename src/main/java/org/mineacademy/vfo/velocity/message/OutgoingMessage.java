@@ -176,7 +176,7 @@ public final class OutgoingMessage extends Message {
 	 * @param serverName
 	 * @return
 	 */
-	public byte[] getData(String serverName) {
+	public byte[] toByteArray(String serverName) {
 		final ByteArrayDataOutput out = ByteStreams.newDataOutput();
 
 		// -----------------------------------------------------------------
@@ -240,7 +240,7 @@ public final class OutgoingMessage extends Message {
 				return;
 			}
 
-			final byte[] data = this.getData(fromServer);
+			final byte[] data = this.toByteArray(fromServer);
 
 			if (data.length > 32_000) { // Safety margin
 				Common.log("[outgoing-sendToServer] Outgoing bungee message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes.");
@@ -269,7 +269,7 @@ public final class OutgoingMessage extends Message {
 	public void broadcastExcept(@Nullable String ignoredServerName) {
 		synchronized (BungeeListener.DEFAULT_CHANNEL) {
 			final String channel = this.getChannel();
-			final byte[] data = this.getData("");
+			final byte[] data = this.toByteArray("");
 
 			if (data.length > 32_000) { // Safety margin
 				Common.log("[outgoing-broadcastExcept] Outgoing message was oversized, not sending. Max length: 32766 bytes, got " + data.length + " bytes. Channel: " + this.getListener().getChannel()

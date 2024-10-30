@@ -18,6 +18,7 @@ public final class ReloadCommand extends SimpleCommand {
 	/**
 	 * Create a new reload sub-command with the given permission.
 	 *
+	 * @param label
 	 * @param permission
 	 */
 	public ReloadCommand(String label, String permission) {

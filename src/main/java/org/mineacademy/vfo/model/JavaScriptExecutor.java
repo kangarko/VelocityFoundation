@@ -28,35 +28,40 @@ public final class JavaScriptExecutor {
 	/**
 	 * The engine singleton
 	 */
-	private static final ScriptEngine engine;
+	private static ScriptEngine engine;
 
 	// Load the engine
 	static {
-		Thread.currentThread().setContextClassLoader(SimplePlugin.class.getClassLoader());
+		try {
+			Thread.currentThread().setContextClassLoader(SimplePlugin.class.getClassLoader());
 
-		ScriptEngineManager engineManager = new ScriptEngineManager();
-		ScriptEngine scriptEngine = engineManager.getEngineByName("Nashorn");
+			ScriptEngineManager engineManager = new ScriptEngineManager();
+			ScriptEngine scriptEngine = engineManager.getEngineByName("Nashorn");
 
-		// Workaround for newer Minecraft releases, still unsure what the cause is
-		if (scriptEngine == null) {
-			engineManager = new ScriptEngineManager(null);
+			// Workaround for newer Minecraft releases, still unsure what the cause is
+			if (scriptEngine == null) {
+				engineManager = new ScriptEngineManager(null);
 
-			scriptEngine = engineManager.getEngineByName("Nashorn");
-		}
-
-		// If still fails, try to load our own library for Java 15 and up
-		if (scriptEngine == null) {
-			final String nashorn = "org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory";
-
-			if (ReflectionUtil.isClassAvailable(nashorn)) {
-				final ScriptEngineFactory engineFactory = ReflectionUtil.instantiate(ReflectionUtil.lookupClass(nashorn));
-
-				engineManager.registerEngineName("Nashorn", engineFactory);
 				scriptEngine = engineManager.getEngineByName("Nashorn");
 			}
-		}
 
-		engine = scriptEngine;
+			// If still fails, try to load our own library for Java 15 and up
+			if (scriptEngine == null) {
+				final String nashorn = "org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory";
+
+				if (ReflectionUtil.isClassAvailable(nashorn)) {
+					final ScriptEngineFactory engineFactory = ReflectionUtil.instantiate(ReflectionUtil.lookupClass(nashorn));
+
+					engineManager.registerEngineName("Nashorn", engineFactory);
+					scriptEngine = engineManager.getEngineByName("Nashorn");
+				}
+			}
+
+			engine = scriptEngine;
+
+		} catch (final Throwable t) {
+			//Common.error(t, "Error initializing JavaScript engine");
+		}
 	}
 
 	/**

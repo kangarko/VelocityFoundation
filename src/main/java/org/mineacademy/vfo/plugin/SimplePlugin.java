@@ -38,7 +38,6 @@ import org.mineacademy.vfo.library.LibraryManager;
 import org.mineacademy.vfo.library.VelocityLibraryManager;
 import org.mineacademy.vfo.metrics.Metrics;
 import org.mineacademy.vfo.model.FolderWatcher;
-import org.mineacademy.vfo.model.JavaScriptExecutor;
 import org.mineacademy.vfo.remain.Remain;
 import org.mineacademy.vfo.settings.FileConfig;
 import org.mineacademy.vfo.settings.Lang;
@@ -274,16 +273,6 @@ public abstract class SimplePlugin {
 		this.logger = logger;
 		this.dataFolder = new File(dataDirectory.toFile().getParentFile(), this.name); // Another hack to prevent lowercase folders
 
-		// Init Nashorn library, must be shaded in the plugin's jar
-		try {
-			final javax.script.ScriptEngineManager engineManager = new javax.script.ScriptEngineManager();
-			final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
-			engineManager.registerEngineName("Nashorn", engineFactory);
-
-		} catch (final NoClassDefFoundError ex) {
-			// Assume running on ant
-		}
-
 		// Call delegate
 		this.onPluginLoad();
 	}
@@ -293,10 +282,19 @@ public abstract class SimplePlugin {
 		if (!this.enabled)
 			return;
 
-		Debugger.detectDebugMode();
+		// Prepare Nashorn engine
+		this.loadLibrary("org.openjdk.nashorn", "nashorn-core", "15.4");
 
-		if (getJavaVersion() >= 11)
-			this.loadLibrary("org.openjdk.nashorn", "nashorn-core", "15.4");
+		try {
+			final javax.script.ScriptEngineManager engineManager = new javax.script.ScriptEngineManager();
+			final javax.script.ScriptEngineFactory engineFactory = new org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory();
+			engineManager.registerEngineName("Nashorn", engineFactory);
+
+		} catch (final NoClassDefFoundError ex) {
+			Common.error(ex, "Failed to download nashorn-core library, continuing loading but JavaScript features will not work.");
+		}
+
+		Debugger.detectDebugMode();
 
 		// Disable logging prefix if logo is set
 		if (this.getStartupLogo() != null) {
@@ -334,9 +332,6 @@ public abstract class SimplePlugin {
 
 			if (!this.enabled)
 				return;
-
-			// Prepare Nashorn engine
-			JavaScriptExecutor.run("");
 
 			if (this.getMetricsPluginId() != -1)
 				new Metrics.Factory(this.proxy, this.logger, this.dataFolder.toPath()).make(this, getMetricsPluginId());
